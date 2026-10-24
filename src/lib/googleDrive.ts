@@ -63,7 +63,8 @@ export async function uploadPhotoToGoogleDrive({
   try {
     const cleanName = (guestName || 'Tetamu').replace(/[^a-zA-Z0-9_\-\s]/g, '').trim() || 'Tetamu';
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const defaultFilename = `AtifIsma_${cleanName}_${timestamp}.jpg`;
+    const cleanPrefix = EVENT_CONFIG.title.replace(/[^a-zA-Z0-9]/g, '') || 'Guestbook';
+    const defaultFilename = `${cleanPrefix}_${cleanName}_${timestamp}.jpg`;
 
     const payload = {
       image: photoBase64,

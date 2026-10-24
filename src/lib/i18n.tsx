@@ -95,7 +95,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     shareMomentBtn: 'Share Your Wishes',
     photoboothBtn: '📸 Photobooth Studio (6 Strip Styles)',
     liveWallBtn: 'Open Gallery & Live Wall',
-    footerCelebration: 'memoira • {title} Engagement Celebration',
+    footerCelebration: `memoira • {title} ${EVENT_CONFIG.eventType?.en || 'Wedding Celebration'}`,
 
     // Guestbook Modal
     modalTitle: 'Leave a Memory & Wish',
@@ -166,7 +166,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     shareMomentBtn: 'Kongsikan Momen',
     photoboothBtn: '📸 Studio Photobooth (6 Pilihan Strip)',
     liveWallBtn: 'Buka Galeri & Live Wall',
-    footerCelebration: 'memoira • Sambutan Pertunangan {title}',
+    footerCelebration: `memoira • ${EVENT_CONFIG.eventType?.ms || 'Majlis Perkahwinan'} {title}`,
 
     // Guestbook Modal
     modalTitle: 'Tinggalkan Momen & Ucapan',

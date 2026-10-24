@@ -264,7 +264,7 @@ export async function downloadStripImage(
           await navigator.share({
             files: [file],
             title: filename,
-            text: 'Atif & Isma Photobooth Strip ♡',
+            text: `${EVENT_CONFIG.title} Photobooth Strip ♡`,
           });
           return { success: true, method: 'share', blobUrl };
         }

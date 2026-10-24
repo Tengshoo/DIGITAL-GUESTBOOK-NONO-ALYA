@@ -44,7 +44,7 @@ function doPost(e) {
     var guestName = data.guestName || "Guest";
     var message = data.message || "";
     var timestamp = data.timestamp || new Date().toISOString();
-    var filename = data.filename || ("AtifIsma_" + guestName.replace(/[^a-zA-Z0-9]/g, "_") + "_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss") + ".jpg");
+    var filename = data.filename || ("Guestbook_" + guestName.replace(/[^a-zA-Z0-9]/g, "_") + "_" + Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd_HHmmss") + ".jpg");
 
     if (!base64Image) {
       return responseJSON({ status: "error", message: "No image provided" });
@@ -103,7 +103,7 @@ function doPost(e) {
 }
 
 function doGet(e) {
-  return ContentService.createTextOutput("Atif & Isma Google Drive Photo Upload Endpoint is Active!").setMimeType(ContentService.MimeType.TEXT);
+  return ContentService.createTextOutput("Digital Guestbook Google Drive Photo Upload Endpoint is Active!").setMimeType(ContentService.MimeType.TEXT);
 }
 
 function responseJSON(obj) {
