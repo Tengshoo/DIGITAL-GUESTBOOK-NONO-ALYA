@@ -45,8 +45,12 @@ export const EVENT_CONFIG = {
   supabase: {
     // TIP: You can use ONE single Supabase project across ALL your customers!
     // Simply change the eventId below for each new customer.
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    url:
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      'https://msrdrslqdgqvbdpvfvgi.supabase.co',
+    anonKey:
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1zcmRyc2xxZGdxdmJkcHZmdmdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI0MTI0NzgsImV4cCI6MjEwNzk4ODQ3OH0.sJvuIyvNUzNjYOASNKFAsnVAB-BbheLXGduGc0GA4qg',
     // Unique ID for this customer so wishes never mix with other events
     eventId: 'fikri-alya', // e.g. 'aiman-dahlia', 'sarah-daniel'
   },
