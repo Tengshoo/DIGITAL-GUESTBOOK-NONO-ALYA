@@ -12,26 +12,26 @@
 
 export const EVENT_CONFIG = {
   // 1. Couple or Event Main Names (e.g. 'Atif & Isma', 'Aiman & Dahlia')
-  title: 'Atif & Isma',
+  title: 'Fikri & Alya',
 
   // 2. Event Type / Subtitle (Displayed above the main couple name)
   eventType: {
-    en: 'Engagement Celebration', // e.g. 'Wedding Celebration', 'Reception Ceremony'
-    ms: 'Majlis Pertunangan',      // e.g. 'Majlis Perkahwinan', 'Majlis Kesyukuran'
+    en: 'Wedding Celebration', // e.g. 'Wedding Celebration', 'Reception Ceremony'
+    ms: 'Majlis Perkahwinan',      // e.g. 'Majlis Perkahwinan', 'Majlis Kesyukuran'
   },
 
   // 3. Event Date
   date: {
-    en: '26 December 2026',
-    ms: '26 Disember 2026',
-    numeric: '26.12.2026',        // Used in photobooth strip taglines & stamps
+    en: '19 December 2026',
+    ms: '19 Disember 2026',
+    numeric: '19.12.2026',        // Used in photobooth strip taglines & stamps
   },
 
   // 4. Event Venue / Location
-  venue: 'OneTwoKL',
+  venue: 'Sentosa Villa Resort',
 
   // 5. Social Media Hashtag
-  hashtag: '#AtifFoundIsma',
+  hashtag: '#FikriAlya',
 
   // 6. Cover Photos (Save new photos in /public/assets/img/ folder)
   images: {
@@ -48,7 +48,7 @@ export const EVENT_CONFIG = {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
     // Unique ID for this customer so wishes never mix with other events
-    eventId: 'atif-isma', // e.g. 'aiman-dahlia', 'sarah-daniel'
+    eventId: 'fikri-alya', // e.g. 'aiman-dahlia', 'sarah-daniel'
   },
 
   // 8. Google Drive Photo Storage
@@ -56,9 +56,9 @@ export const EVENT_CONFIG = {
     // Deployed Web App URL from script.google.com
     scriptUrl:
       process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
-      'https://script.google.com/macros/s/AKfycbxmqBSEM_3emvagMiClkb9yN1VNalC7joWLkYymvi8fk14xq1SexXeeIs2JS88zX27-/exec',
+      'https://script.google.com/macros/s/AKfycbzZ9b0vTB3bzSRoTjRj6Ak1LSdKJz5JLAYg2PHEsZGUcdGQ-wIC9CYEwiJwav5lOwJC/exec',
     // Direct link to the customer's Google Drive folder (leave empty if not needed)
-    folderUrl:
+    folderUrl: 
       process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL ||
       '',
   },
