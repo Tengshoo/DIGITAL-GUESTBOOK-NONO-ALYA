@@ -37,6 +37,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(typeof window!=='undefined'&&window.location.protocol==='http:'&&!['localhost','127.0.0.1'].includes(window.location.hostname)){window.location.replace('https://'+window.location.hostname+window.location.pathname+window.location.search+window.location.hash);}`,
+          }}
+        />
+      </head>
       <body className="min-h-screen min-h-[100dvh] text-warm-900 selection:bg-rose-200 selection:text-rose-900 antialiased font-sans">
         <LanguageProvider>{children}</LanguageProvider>
       </body>
