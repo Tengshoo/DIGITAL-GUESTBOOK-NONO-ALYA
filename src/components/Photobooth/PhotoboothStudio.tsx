@@ -38,9 +38,9 @@ export default function PhotoboothStudio({
   onAttachToGuestbook,
   onClose,
   eventInfo = {
-    welcomeTitle: EVENT_CONFIG.title,
-    miniTitle: EVENT_CONFIG.eventType.ms,
-    date: EVENT_CONFIG.date.en,
+    welcomeTitle: EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title,
+    miniTitle: EVENT_CONFIG.photobooth?.tagline || EVENT_CONFIG.eventType.ms,
+    date: EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date.numeric || EVENT_CONFIG.date.en,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
   },

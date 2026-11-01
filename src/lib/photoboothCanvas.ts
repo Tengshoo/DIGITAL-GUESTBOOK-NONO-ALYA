@@ -61,9 +61,9 @@ export async function generatePhotoboothStripCanvas(
   themeId: PhotoboothStripTheme['id'],
   filterId: PhotoFilter['id'] = 'original',
   eventInfo: EventInfo = {
-    welcomeTitle: EVENT_CONFIG.title,
-    miniTitle: EVENT_CONFIG.eventType.ms,
-    date: EVENT_CONFIG.date.en,
+    welcomeTitle: EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title,
+    miniTitle: EVENT_CONFIG.photobooth?.tagline || EVENT_CONFIG.eventType.ms,
+    date: EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date.numeric || EVENT_CONFIG.date.en,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
   }
@@ -264,7 +264,7 @@ export async function downloadStripImage(
           await navigator.share({
             files: [file],
             title: filename,
-            text: `${EVENT_CONFIG.title} Photobooth Strip ♡`,
+            text: `${EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title} Photobooth Strip ♡`,
           });
           return { success: true, method: 'share', blobUrl };
         }

@@ -33,7 +33,21 @@ export const EVENT_CONFIG = {
   // 5. Social Media Hashtag
   hashtag: '#FikriAlya',
 
-  // 6. Cover Photos (Save new photos in /public/assets/img/ folder)
+  // 6. Photobooth Studio Strip Customization
+  photobooth: {
+    // Couple names printed on the photobooth strips (e.g. 'Fikri & Alya')
+    // If left blank or omitted, it automatically uses EVENT_CONFIG.title
+    coupleNames: 'Fikri & Alya',
+
+    // Date printed on photobooth strips (e.g. '19.12.2026')
+    // If left blank or omitted, it automatically uses EVENT_CONFIG.date.numeric
+    date: '19.12.2026',
+
+    // Tagline / Subtitle printed on photobooth strips
+    tagline: 'romantic memories',
+  },
+
+  // 7. Cover Photos (Save new photos in /public/assets/img/ folder)
   images: {
     // Couple portrait avatar (circular photo on front page cover)
     avatar: '/assets/img/arman-farah-welcome.jpg',
@@ -41,7 +55,7 @@ export const EVENT_CONFIG = {
     background: '/assets/img/arman-farah-venue.png?v=2',
   },
 
-  // 7. Supabase Cloud Database (For Live Wall & Online Guestbook)
+  // 8. Supabase Cloud Database (For Live Wall & Online Guestbook)
   supabase: {
     // TIP: You can use ONE single Supabase project across ALL your customers!
     // Simply change the eventId below for each new customer.
@@ -55,7 +69,7 @@ export const EVENT_CONFIG = {
     eventId: 'fikri-alya', // e.g. 'aiman-dahlia', 'sarah-daniel'
   },
 
-  // 8. Google Drive Photo Storage
+  // 9. Google Drive Photo Storage
   googleDrive: {
     // Deployed Web App URL from script.google.com
     scriptUrl:
@@ -67,10 +81,10 @@ export const EVENT_CONFIG = {
       '',
   },
 
-  // 9. Host Admin PIN (Default PIN for /admin moderation page)
+  // 10. Host Admin PIN (Default PIN for /admin moderation page)
   adminPin: '1234',
 
-  // 10. Photo Upload Limit (Total allowed across Gallery, Selfie & Photobooth)
+  // 11. Photo Upload Limit (Total allowed across Gallery, Selfie & Photobooth)
   // Set to 500 or any custom number. Change anytime!
   photoUploadLimit: 5000,
 };

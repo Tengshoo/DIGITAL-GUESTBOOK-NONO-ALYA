@@ -753,7 +753,12 @@ export default function GuestbookPage() {
         >
           <div className="w-full max-w-4xl max-h-[94dvh] overflow-y-auto overscroll-contain touch-scroll bg-[#FAF8F5] rounded-3xl p-4 sm:p-7 shadow-2xl border border-champagne-300 relative cursor-default">
             <PhotoboothStudio
-              eventInfo={eventDetails}
+              eventInfo={{
+                ...eventDetails,
+                welcomeTitle: EVENT_CONFIG.photobooth?.coupleNames || eventDetails.welcomeTitle,
+                date: EVENT_CONFIG.photobooth?.date || eventDetails.date,
+                miniTitle: EVENT_CONFIG.photobooth?.tagline || eventDetails.miniTitle,
+              }}
               onClose={() => setIsPhotoboothModalOpen(false)}
               onAttachToGuestbook={handlePhotoboothComplete}
               isModal

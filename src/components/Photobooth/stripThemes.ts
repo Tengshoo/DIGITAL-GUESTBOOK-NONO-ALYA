@@ -80,7 +80,7 @@ export const PHOTOBOOTH_STRIP_THEMES: PhotoboothStripTheme[] = [
     bgColor: '#FAF6EE',
     textColor: '#241D17',
     accentColor: '#EAB308',
-    tagline: `sweetest memories together ♡ ${EVENT_CONFIG.date.numeric}`,
+    tagline: `sweetest memories together ♡ ${EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date.numeric}`,
     slots: [
       {
         id: 'slot-1',
@@ -168,7 +168,7 @@ export const PHOTOBOOTH_STRIP_THEMES: PhotoboothStripTheme[] = [
     bgColor: '#FFFBF7',
     textColor: '#4A3B32',
     accentColor: '#D97706',
-    tagline: `romantic memories • ${EVENT_CONFIG.title.toLowerCase()}`,
+    tagline: `romantic memories • ${(EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title || 'celebration').toLowerCase()}`,
     slots: [
       {
         id: 'slot-1',
@@ -223,7 +223,7 @@ export const PHOTOBOOTH_STRIP_THEMES: PhotoboothStripTheme[] = [
     bgColor: '#1A1817',
     textColor: '#F5F5F0',
     accentColor: '#E2E8F0',
-    tagline: `RETRO DARKROOM PHOTO ARCHIVE // ${EVENT_CONFIG.date.numeric}`,
+    tagline: `RETRO DARKROOM PHOTO ARCHIVE // ${EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date.numeric}`,
     slots: [
       {
         id: 'slot-1',
@@ -385,7 +385,38 @@ export const PHOTOBOOTH_STRIP_THEMES: PhotoboothStripTheme[] = [
         borderRadius: 2,
       },
     ],
-    textBlocks: [],
+    textBlocks: [
+      {
+        id: 'couple-name',
+        x: 50,
+        y: 2020,
+        width: 600,
+        height: 60,
+        rotation: 0,
+        fontFamily: "'Cinzel', Georgia, serif",
+        fontSize: 34,
+        fontWeight: 600,
+        color: '#181310',
+        align: 'center',
+        binding: 'event.name',
+        uppercase: true,
+      },
+      {
+        id: 'event-date',
+        x: 50,
+        y: 2090,
+        width: 600,
+        height: 35,
+        rotation: 0,
+        fontFamily: "'Montserrat', sans-serif",
+        fontSize: 22,
+        fontWeight: 500,
+        color: '#6B5E55',
+        align: 'center',
+        binding: 'event.date',
+        uppercase: false,
+      },
+    ],
   },
   {
     id: 'film-classic',

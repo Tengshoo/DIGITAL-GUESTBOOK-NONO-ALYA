@@ -13,9 +13,9 @@ export default function PhotoboothPage() {
   const { language, t } = useLanguage();
 
   const eventDetails = {
-    miniTitle: t.miniTitle,
-    welcomeTitle: EVENT_CONFIG.title,
-    date: t.date,
+    miniTitle: EVENT_CONFIG.photobooth?.tagline || t.miniTitle,
+    welcomeTitle: EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title,
+    date: EVENT_CONFIG.photobooth?.date || t.date,
     venue: EVENT_CONFIG.venue,
     hashtag: t.hashtag,
   };
