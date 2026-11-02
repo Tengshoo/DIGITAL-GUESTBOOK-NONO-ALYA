@@ -22,6 +22,7 @@ import AudioPlayer from '@/components/AudioPlayer';
 import { getApprovedEntries, getSupabase } from '@/lib/supabase';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 import { getAssetPath } from '@/lib/assets';
+import { generateQrCodeDataUrl } from '@/lib/qrcode';
 
 interface GuestEntry {
   id: number;
@@ -553,13 +554,11 @@ export default function WallModePage() {
               Imbas kod QR menggunakan kamera telefon untuk membuka buku tetamu digital.
             </p>
 
-            {/* QR Code generator via standard public api or canvas */}
+            {/* Local Offline SVG QR Code Generator */}
             <div className="p-4 bg-white rounded-2xl shadow-inner border border-warm-200 inline-block mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-                  qrOrigin || 'http://localhost:3000'
-                )}&color=3F3229`}
+                src={generateQrCodeDataUrl(qrOrigin || 'http://localhost:3000', '#3F3229', '#FFFFFF')}
                 alt="QR code to sign the guestbook"
                 className="w-48 h-48 mx-auto"
               />

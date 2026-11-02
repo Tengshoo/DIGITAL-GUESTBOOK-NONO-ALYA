@@ -6,7 +6,7 @@
  */
 
 import { EVENT_CONFIG } from '@/config/eventConfig';
-import { isPhotoUploadAllowed } from '@/lib/supabase';
+import { isPhotoUploadAllowed, sanitizePhotoUrl } from '@/lib/supabase';
 
 const GOOGLE_SCRIPT_URL =
   process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
@@ -50,6 +50,14 @@ export async function uploadPhotoToGoogleDrive({
     return { success: true };
   }
 
+  const validatedPhoto = sanitizePhotoUrl(photoBase64);
+  if (!validatedPhoto) {
+    return {
+      success: false,
+      error: 'Format atau saiz gambar tidak sah.',
+    };
+  }
+
   // Check event photo upload limit
   const { allowed, currentCount, limit } = await isPhotoUploadAllowed();
   if (!allowed) {
@@ -61,16 +69,20 @@ export async function uploadPhotoToGoogleDrive({
   }
 
   try {
-    const cleanName = (guestName || 'Tetamu').replace(/[^a-zA-Z0-9_\-\s]/g, '').trim() || 'Tetamu';
+    const cleanName =
+      (guestName || 'Tetamu')
+        .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+        .trim()
+        .slice(0, 60) || 'Tetamu';
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const cleanPrefix = EVENT_CONFIG.title.replace(/[^a-zA-Z0-9]/g, '') || 'Guestbook';
     const defaultFilename = `${cleanPrefix}_${cleanName}_${timestamp}.jpg`;
 
     const payload = {
-      image: photoBase64,
+      image: validatedPhoto,
       filename: filename || defaultFilename,
-      guestName: guestName.trim(),
-      message: message.trim(),
+      guestName: guestName.trim().slice(0, 100),
+      message: message.trim().slice(0, 2000),
       timestamp: new Date().toISOString(),
     };
 

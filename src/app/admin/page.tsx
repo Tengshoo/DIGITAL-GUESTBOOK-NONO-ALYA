@@ -67,13 +67,7 @@ export default function AdminDashboardPage() {
     setIsLoading(true);
     setLoginError(null);
     try {
-      const correctPin =
-        process.env.NEXT_PUBLIC_ADMIN_PIN || EVENT_CONFIG.adminPin || '1234';
-      if (currentPin !== correctPin) {
-        throw new Error('PIN keselamatan tidak sah.');
-      }
-
-      const data = await getAllEntriesForAdmin();
+      const data = await getAllEntriesForAdmin(currentPin);
       setEntries(data);
       setIsAuthenticated(true);
       sessionStorage.setItem('admin_guestbook_pin', currentPin);
@@ -105,7 +99,7 @@ export default function AdminDashboardPage() {
   const toggleApproval = async (id: number, currentStatus: number) => {
     try {
       const newStatus = currentStatus === 1 ? 0 : 1;
-      const res = await updateEntryApproval(id, newStatus);
+      const res = await updateEntryApproval(id, newStatus, pin);
       if (!res.success) {
         throw new Error(res.error || 'Gagal mengemaskini status entri.');
       }
@@ -127,7 +121,7 @@ export default function AdminDashboardPage() {
     if (!confirmDelete) return;
 
     try {
-      const res = await deleteGuestEntry(id);
+      const res = await deleteGuestEntry(id, pin);
       if (!res.success) {
         throw new Error(res.error || 'Gagal memadamkan entri');
       }
@@ -156,16 +150,21 @@ export default function AdminDashboardPage() {
     downloadAnchor.remove();
   };
 
+  const sanitizeCsvCell = (val: string) => {
+    const escaped = val.replace(/"/g, '""');
+    return /^[=+\-@\t\r]/.test(escaped) ? `'${escaped}` : escaped;
+  };
+
   const exportAsCsv = () => {
     const headers = ['ID', 'Name', 'Message', 'Approved', 'Has Photo', 'Has Audio', 'Created At'];
     const rows = entries.map((e) => [
       e.id,
-      `"${e.name.replace(/"/g, '""')}"`,
-      `"${e.message.replace(/"/g, '""')}"`,
+      `"${sanitizeCsvCell(e.name)}"`,
+      `"${sanitizeCsvCell(e.message)}"`,
       e.is_approved === 1 ? 'Yes' : 'No',
       e.photo_url ? 'Yes' : 'No',
       e.audio_url ? 'Yes' : 'No',
-      `"${e.created_at}"`,
+      `"${sanitizeCsvCell(e.created_at)}"`,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -225,16 +224,13 @@ export default function AdminDashboardPage() {
               <input
                 type="password"
                 inputMode="numeric"
-                maxLength={8}
+                maxLength={16}
                 value={enteredPin}
                 onChange={(e) => setEnteredPin(e.target.value)}
-                placeholder="Enter 4-digit PIN (default: 1234)"
+                placeholder="Enter Host Security PIN"
                 autoFocus
                 className="w-full text-center text-2xl font-mono tracking-widest px-4 py-3 rounded-2xl border border-warm-200 bg-warm-50/50 text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-2 focus:ring-champagne-400 focus:bg-white transition"
               />
-              <span className="text-[11px] text-warm-400 mt-1 block">
-                Default event PIN is <code className="font-bold text-champagne-700">1234</code>
-              </span>
             </div>
 
             <button
