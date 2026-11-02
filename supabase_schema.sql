@@ -24,28 +24,31 @@ create table if not exists public.entries (
 alter table public.entries add column if not exists event_id text default 'default';
 create index if not exists idx_entries_event_id on public.entries(event_id);
 
--- Enforce input validation constraints on entries
+-- Enforce input validation constraints on new entries (NOT VALID ensures existing legacy rows never block migration)
 alter table public.entries drop constraint if exists chk_entries_name_len;
 alter table public.entries add constraint chk_entries_name_len
-  check (char_length(trim(name)) between 1 and 100);
+  check (char_length(trim(name)) between 1 and 100) not valid;
 
 alter table public.entries drop constraint if exists chk_entries_message_len;
 alter table public.entries add constraint chk_entries_message_len
-  check (char_length(trim(message)) between 1 and 2000);
+  check (char_length(trim(message)) between 1 and 2000) not valid;
 
 alter table public.entries drop constraint if exists chk_entries_event_id_len;
 alter table public.entries add constraint chk_entries_event_id_len
-  check (char_length(trim(event_id)) between 1 and 100);
+  check (char_length(trim(event_id)) between 1 and 100) not valid;
 
 alter table public.entries drop constraint if exists chk_entries_photo_url_safe;
 alter table public.entries add constraint chk_entries_photo_url_safe
   check (
     photo_url is null
     or (
-      photo_url ~ '^data:image/(jpeg|jpg|png|webp);base64,'
-      and char_length(photo_url) <= 4500000
+      (
+        photo_url ~ '^data:image/(jpeg|jpg|png|webp);base64,'
+        or photo_url ~ '^\[("data:image/(jpeg|jpg|png|webp);base64,[^"]+",?)+\]$'
+      )
+      and char_length(photo_url) <= 15000000
     )
-  );
+  ) not valid;
 
 alter table public.entries drop constraint if exists chk_entries_audio_url_safe;
 alter table public.entries add constraint chk_entries_audio_url_safe
@@ -55,7 +58,7 @@ alter table public.entries add constraint chk_entries_audio_url_safe
       audio_url ~ '^data:audio/(mp4|webm|aac|ogg|wav|mpeg)(;codecs=[a-zA-Z0-9_,.-]+)?;base64,'
       and char_length(audio_url) <= 3500000
     )
-  );
+  ) not valid;
 
 -- 2. Least-privilege permissions for anon and authenticated roles
 -- Revoke direct UPDATE/DELETE/TRUNCATE from public clients; moderation uses RPC functions below.
@@ -113,8 +116,11 @@ create policy "Allow insert valid entries"
     and (
       photo_url is null
       or (
-        photo_url ~ '^data:image/(jpeg|jpg|png|webp);base64,'
-        and char_length(photo_url) <= 4500000
+        (
+          photo_url ~ '^data:image/(jpeg|jpg|png|webp);base64,'
+          or photo_url ~ '^\[("data:image/(jpeg|jpg|png|webp);base64,[^"]+",?)+\]$'
+        )
+        and char_length(photo_url) <= 15000000
       )
     )
     and (

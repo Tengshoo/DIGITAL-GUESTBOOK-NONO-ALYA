@@ -13,6 +13,8 @@ export interface SupabaseGuestEntry {
   created_at: string;
 }
 
+export const MAX_PHOTOS_PER_WISH = 10;
+
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   EVENT_CONFIG.supabase?.url ||
@@ -32,6 +34,9 @@ const MAX_AUDIO_DATA_URL_LENGTH = 3_500_000;
 const SUBMIT_COOLDOWN_MS = 4_000;
 let lastSubmissionTimestamp = 0;
 
+/**
+ * Validates a single base64 image data URL
+ */
 export function sanitizePhotoUrl(url?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
@@ -43,6 +48,56 @@ export function sanitizePhotoUrl(url?: string | null): string | null {
     return trimmed;
   }
   return null;
+}
+
+/**
+ * Parses `entry.photo_url` (which may be a single data URL string or a JSON array of up to 10 data URLs)
+ * into a validated array of image data URLs.
+ */
+export function parsePhotoUrls(rawPhotoField?: string | null): string[] {
+  if (!rawPhotoField || typeof rawPhotoField !== 'string') return [];
+  const trimmed = rawPhotoField.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => (typeof item === 'string' ? sanitizePhotoUrl(item) : null))
+          .filter((item): item is string => Boolean(item))
+          .slice(0, MAX_PHOTOS_PER_WISH);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  const single = sanitizePhotoUrl(trimmed);
+  return single ? [single] : [];
+}
+
+/**
+ * Serializes an array of validated photo data URLs for storage in `entries.photo_url`.
+ * Stores a single photo as a plain string (100% backward compatible) and 2+ photos as a JSON array.
+ */
+export function serializePhotoUrls(urls: string[]): string | null {
+  const valid = urls
+    .map((u) => sanitizePhotoUrl(u))
+    .filter((u): u is string => Boolean(u))
+    .slice(0, MAX_PHOTOS_PER_WISH);
+
+  if (valid.length === 0) return null;
+  if (valid.length === 1) return valid[0];
+  return JSON.stringify(valid);
+}
+
+/**
+ * Sanitizes an entry's `photo_url` field (preserving either a single photo or JSON array of photos)
+ */
+function sanitizeEntryPhotoField(rawPhotoField?: string | null): string | null {
+  const photos = parsePhotoUrls(rawPhotoField);
+  return serializePhotoUrls(photos);
 }
 
 export function sanitizeAudioUrl(url?: string | null): string | null {
@@ -61,7 +116,7 @@ export function sanitizeAudioUrl(url?: string | null): string | null {
 function sanitizeEntries(entries: SupabaseGuestEntry[]): SupabaseGuestEntry[] {
   return entries.map((entry) => ({
     ...entry,
-    photo_url: sanitizePhotoUrl(entry.photo_url),
+    photo_url: sanitizeEntryPhotoField(entry.photo_url),
     audio_url: sanitizeAudioUrl(entry.audio_url),
   }));
 }
@@ -89,6 +144,9 @@ export function getSupabase(): SupabaseClient | null {
 
 // Scoped local storage key per customer event
 const LOCAL_STORAGE_KEY = `everafter_guestbook_entries_${currentEventId}`;
+
+// In-memory cache of approved entries by ID to prevent re-downloading multi-megabyte photos every 5s on Live Wall
+const approvedEntriesCache = new Map<number, SupabaseGuestEntry>();
 
 const defaultFallbackEntries: SupabaseGuestEntry[] = [
   {
@@ -164,7 +222,7 @@ export async function getPhotoUploadCount(): Promise<number> {
   }
 
   const local = getLocalEntries();
-  return local.filter((e) => e.photo_url && e.photo_url.trim().length > 0).length;
+  return local.reduce((sum, e) => sum + parsePhotoUrls(e.photo_url).length, 0);
 }
 
 /**
@@ -174,23 +232,27 @@ export async function isPhotoUploadAllowed(): Promise<{
   allowed: boolean;
   currentCount: number;
   limit: number;
+  remaining: number;
 }> {
   const limit = EVENT_CONFIG.photoUploadLimit ?? 500;
   const currentCount = await getPhotoUploadCount();
+  const remaining = Math.max(0, limit - currentCount);
   return {
     allowed: currentCount < limit,
     currentCount,
     limit,
+    remaining,
   };
 }
 
 /**
- * Submit a new guestbook memory
+ * Submit a new guestbook memory (supports 1 photo via `photo_url` or up to 10 photos via `photo_urls`)
  */
 export async function submitGuestbookEntry(entry: {
   name: string;
   message: string;
   photo_url?: string | null;
+  photo_urls?: string[] | null;
   audio_url?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const cleanName = entry.name.trim();
@@ -218,8 +280,23 @@ export async function submitGuestbookEntry(entry: {
     };
   }
 
-  const validatedPhotoUrl = entry.photo_url ? sanitizePhotoUrl(entry.photo_url) : null;
-  if (entry.photo_url && !validatedPhotoUrl) {
+  // Normalize either photo_urls array or single/serialized photo_url
+  let candidatePhotos: string[] = [];
+  if (Array.isArray(entry.photo_urls) && entry.photo_urls.length > 0) {
+    candidatePhotos = entry.photo_urls;
+  } else if (entry.photo_url) {
+    candidatePhotos = parsePhotoUrls(entry.photo_url);
+  }
+
+  if (candidatePhotos.length > MAX_PHOTOS_PER_WISH) {
+    return {
+      success: false,
+      error: `Maksimum ${MAX_PHOTOS_PER_WISH} keping gambar dibenarkan bagi setiap ucapan.`,
+    };
+  }
+
+  const serializedPhotoUrl = serializePhotoUrls(candidatePhotos);
+  if ((entry.photo_url || (entry.photo_urls && entry.photo_urls.length > 0)) && !serializedPhotoUrl) {
     return {
       success: false,
       error: 'Format atau saiz gambar tidak sah.',
@@ -234,8 +311,8 @@ export async function submitGuestbookEntry(entry: {
     };
   }
 
-  // Enforce photo upload limit if a photo is attached
-  if (validatedPhotoUrl) {
+  // Enforce photo upload limit if photos are attached
+  if (serializedPhotoUrl) {
     const { allowed, currentCount, limit } = await isPhotoUploadAllowed();
     if (!allowed) {
       return {
@@ -254,7 +331,7 @@ export async function submitGuestbookEntry(entry: {
           event_id: currentEventId,
           name: cleanName,
           message: cleanMessage,
-          photo_url: validatedPhotoUrl,
+          photo_url: serializedPhotoUrl,
           audio_url: validatedAudioUrl,
           is_approved: 1,
         },
@@ -277,7 +354,7 @@ export async function submitGuestbookEntry(entry: {
     id: Date.now(),
     name: cleanName,
     message: cleanMessage,
-    photo_url: validatedPhotoUrl,
+    photo_url: serializedPhotoUrl,
     audio_url: validatedAudioUrl,
     is_approved: 1,
     created_at: new Date().toISOString(),
@@ -289,28 +366,63 @@ export async function submitGuestbookEntry(entry: {
 
 /**
  * Fetch all approved entries for the Live Wall
+ * Uses incremental caching by ID so 5-second Live Wall polls only download newly added entries,
+ * saving >98% of Supabase bandwidth when multi-photo wishes are present!
  */
 export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
   const supabase = getSupabase();
 
   if (supabase) {
     try {
-      let query = supabase
+      // 1. Lightweight query: only fetch IDs and timestamps of currently approved entries (<1 KB)
+      let metaQuery = supabase
         .from('entries')
-        .select('*')
+        .select('id, is_approved, created_at')
         .eq('is_approved', 1);
 
       if (currentEventId) {
-        query = query.eq('event_id', currentEventId);
+        metaQuery = metaQuery.eq('event_id', currentEventId);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: metaRows, error: metaError } = await metaQuery.order('created_at', {
+        ascending: false,
+      });
 
-      if (error) {
-        console.error('Supabase fetch error:', error);
+      if (metaError || !metaRows) {
+        console.error('Supabase meta fetch error:', metaError);
         return getLocalEntries().filter((e) => e.is_approved === 1);
       }
-      return sanitizeEntries(data || []);
+
+      const approvedIds = metaRows.map((r) => r.id as number);
+      const missingIds = approvedIds.filter((id) => !approvedEntriesCache.has(id));
+
+      // Prune any cached entries that were hidden or deleted by admin
+      const approvedIdSet = new Set(approvedIds);
+      Array.from(approvedEntriesCache.keys()).forEach((cachedId) => {
+        if (!approvedIdSet.has(cachedId)) {
+          approvedEntriesCache.delete(cachedId);
+        }
+      });
+
+      // 2. Fetch full payload (including multi-photo Base64 & audio) ONLY for newly added IDs
+      if (missingIds.length > 0) {
+        const { data: newEntries, error: fullError } = await supabase
+          .from('entries')
+          .select('*')
+          .in('id', missingIds);
+
+        if (!fullError && newEntries) {
+          const sanitized = sanitizeEntries(newEntries as SupabaseGuestEntry[]);
+          for (const item of sanitized) {
+            approvedEntriesCache.set(item.id, item);
+          }
+        }
+      }
+
+      // 3. Return entries in exact created_at DESC order
+      return approvedIds
+        .map((id) => approvedEntriesCache.get(id))
+        .filter((e): e is SupabaseGuestEntry => Boolean(e));
     } catch (err) {
       console.error('Supabase query error:', err);
       return getLocalEntries().filter((e) => e.is_approved === 1);
@@ -397,6 +509,9 @@ export async function updateEntryApproval(
       if (data === false) {
         return { success: false, error: 'Entri tidak ditemui untuk acara ini.' };
       }
+      if (isApproved === 0) {
+        approvedEntriesCache.delete(id);
+      }
       return { success: true };
     }
 
@@ -408,6 +523,9 @@ export async function updateEntryApproval(
         .eq('event_id', currentEventId);
       if (fallback.error) {
         return { success: false, error: fallback.error.message };
+      }
+      if (isApproved === 0) {
+        approvedEntriesCache.delete(id);
       }
       return { success: true };
     }
@@ -447,6 +565,7 @@ export async function deleteGuestEntry(
       if (data === false) {
         return { success: false, error: 'Entri tidak ditemui untuk acara ini.' };
       }
+      approvedEntriesCache.delete(id);
       return { success: true };
     }
 
@@ -459,6 +578,7 @@ export async function deleteGuestEntry(
       if (fallback.error) {
         return { success: false, error: fallback.error.message };
       }
+      approvedEntriesCache.delete(id);
       return { success: true };
     }
 

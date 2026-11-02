@@ -14,6 +14,9 @@ import {
   Calendar,
   MapPin,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 import VoiceRecorder from '@/components/VoiceRecorder';
@@ -28,8 +31,12 @@ import PhotoFrameSelector, {
   applyFilterAndFrameToCanvas,
 } from '@/components/PhotoFrameSelector';
 import PhotoboothStudio from '@/components/Photobooth/PhotoboothStudio';
-import { submitGuestbookEntry, isPhotoUploadAllowed } from '@/lib/supabase';
-import { uploadPhotoToGoogleDrive } from '@/lib/googleDrive';
+import {
+  submitGuestbookEntry,
+  isPhotoUploadAllowed,
+  MAX_PHOTOS_PER_WISH,
+} from '@/lib/supabase';
+import { uploadPhotosToGoogleDrive } from '@/lib/googleDrive';
 import { getAssetPath } from '@/lib/assets';
 import { useLanguage, LanguageToggle } from '@/lib/i18n';
 import { EVENT_CONFIG } from '@/config/eventConfig';
@@ -52,11 +59,14 @@ export default function GuestbookPage() {
   // Form states
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
-  const [rawPhotoBase64, setRawPhotoBase64] = useState<string | null>(null);
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
+  const [rawPhotos, setRawPhotos] = useState<string[]>([]);
+  const [activePhotoIndex, setActivePhotoIndex] = useState<number>(0);
   const [selectedFilter, setSelectedFilter] = useState<PhotoFilter['id']>('original');
   const [selectedFrame, setSelectedFrame] = useState<PhotoFrameConfig['id']>('none');
   const [voiceBase64, setVoiceBase64] = useState<string | null>(null);
+  const [submitProgressText, setSubmitProgressText] = useState<string | null>(null);
+
+  const activeRawPhoto = rawPhotos[activePhotoIndex] || rawPhotos[0] || null;
 
   // Photo upload limit status
   const [photoLimitStatus, setPhotoLimitStatus] = useState<{
@@ -101,8 +111,8 @@ export default function GuestbookPage() {
     try {
       const pendingPhoto = sessionStorage.getItem('pending_guestbook_photo');
       if (pendingPhoto) {
-        setRawPhotoBase64(pendingPhoto);
-        setPhotoBase64(pendingPhoto);
+        setRawPhotos([pendingPhoto]);
+        setActivePhotoIndex(0);
         setSelectedFilter('original');
         setSelectedFrame('none');
         setIsFormOpen(true);
@@ -130,16 +140,61 @@ export default function GuestbookPage() {
       setIsPhotoboothModalOpen(false);
       return;
     }
-    setRawPhotoBase64(stripDataUrl);
-    setPhotoBase64(stripDataUrl);
+    setRawPhotos((prev) => {
+      const next = [...prev, stripDataUrl].slice(0, MAX_PHOTOS_PER_WISH);
+      setActivePhotoIndex(next.length - 1);
+      return next;
+    });
     setSelectedFilter('original');
     setSelectedFrame('none');
     setIsPhotoboothModalOpen(false);
     setIsFormOpen(true);
   };
 
-  // Photo upload handling & client-side compression
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressFileToDataUrl = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error(t.errorInvalidImage));
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error(t.errorInvalidImage));
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1080;
+          const MAX_HEIGHT = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          } else {
+            reject(new Error(t.errorInvalidImage));
+          }
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Multi-photo upload handling (up to 10 photos) & client-side compression
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!photoLimitStatus.allowed) {
       setErrorMsg(
         language === 'ms'
@@ -149,60 +204,82 @@ export default function GuestbookPage() {
       return;
     }
 
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    const isImage = file.type
-      ? file.type.startsWith('image/')
-      : /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name);
-    if (!isImage && file.type) {
-      setErrorMsg(t.errorInvalidImage);
+    const remainingSlots = MAX_PHOTOS_PER_WISH - rawPhotos.length;
+    if (remainingSlots <= 0) {
+      setErrorMsg(
+        language === 'ms'
+          ? `Maksimum ${MAX_PHOTOS_PER_WISH} keping gambar dibenarkan bagi setiap ucapan.`
+          : `You can attach up to ${MAX_PHOTOS_PER_WISH} photos per wish.`
+      );
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        const MAX_HEIGHT = 1200;
-        let width = img.width;
-        let height = img.height;
+    const filesToProcess = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) {
+      setErrorMsg(
+        language === 'ms'
+          ? `Hanya ${MAX_PHOTOS_PER_WISH} keping gambar pertama dipilih (had ${MAX_PHOTOS_PER_WISH} gambar setiap ucapan).`
+          : `Only the first ${MAX_PHOTOS_PER_WISH} photos were selected (limit of ${MAX_PHOTOS_PER_WISH} photos per wish).`
+      );
+    } else {
+      setErrorMsg(null);
+    }
 
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
-          }
-        }
+    const compressedBatch: string[] = [];
+    for (const file of filesToProcess) {
+      const isImage = file.type
+        ? file.type.startsWith('image/')
+        : /\.(jpe?g|png|webp|heic|heif|gif)$/i.test(file.name);
+      if (!isImage && file.type) {
+        setErrorMsg(t.errorInvalidImage);
+        continue;
+      }
+      try {
+        const dataUrl = await compressFileToDataUrl(file);
+        compressedBatch.push(dataUrl);
+      } catch {
+        setErrorMsg(t.errorInvalidImage);
+      }
+    }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressed = canvas.toDataURL('image/jpeg', 0.85);
-          setRawPhotoBase64(compressed);
-          setPhotoBase64(compressed);
+    if (compressedBatch.length > 0) {
+      setRawPhotos((prev) => {
+        const hadNone = prev.length === 0;
+        const next = [...prev, ...compressedBatch].slice(0, MAX_PHOTOS_PER_WISH);
+        if (hadNone) {
+          setActivePhotoIndex(0);
           setSelectedFilter('original');
           setSelectedFrame('none');
-          setErrorMsg(null);
+        } else {
+          setActivePhotoIndex(next.length - 1);
         }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+        return next;
+      });
+    }
   };
 
-  const removePhoto = () => {
-    setRawPhotoBase64(null);
-    setPhotoBase64(null);
+  const removePhotoAt = (indexToRemove: number) => {
+    setRawPhotos((prev) => {
+      const next = prev.filter((_, idx) => idx !== indexToRemove);
+      if (next.length === 0) {
+        setSelectedFilter('original');
+        setSelectedFrame('none');
+        setActivePhotoIndex(0);
+      } else if (activePhotoIndex >= next.length) {
+        setActivePhotoIndex(next.length - 1);
+      }
+      return next;
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  };
+
+  const removeAllPhotos = () => {
+    setRawPhotos([]);
+    setActivePhotoIndex(0);
     setSelectedFilter('original');
     setSelectedFrame('none');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -250,28 +327,41 @@ export default function GuestbookPage() {
     }
 
     setIsSubmitting(true);
+    setSubmitProgressText(null);
 
     try {
-      let finalPhotoUrl: string | null = null;
-      if (rawPhotoBase64) {
-        finalPhotoUrl = await applyFilterAndFrameToCanvas(
-          rawPhotoBase64,
-          selectedFilter,
-          selectedFrame
-        );
+      const finalPhotoUrls: string[] = [];
+      if (rawPhotos.length > 0) {
+        for (let i = 0; i < rawPhotos.length; i++) {
+          if (rawPhotos.length > 1) {
+            setSubmitProgressText(
+              language === 'ms'
+                ? `Memproses gambar ${i + 1}/${rawPhotos.length}...`
+                : `Processing photo ${i + 1}/${rawPhotos.length}...`
+            );
+          }
+          const framedUrl = await applyFilterAndFrameToCanvas(
+            rawPhotos[i],
+            selectedFilter,
+            selectedFrame
+          );
+          finalPhotoUrls.push(framedUrl);
+        }
 
-        // Upload photo/photobooth strip to Google Drive folder
-        uploadPhotoToGoogleDrive({
-          photoBase64: finalPhotoUrl,
+        // Upload all photos / photobooth strips sequentially to Google Drive folder in the background
+        uploadPhotosToGoogleDrive({
+          photosBase64: finalPhotoUrls,
           guestName: name.trim(),
           message: message.trim(),
         }).catch((err) => console.warn('Google Drive background upload:', err));
       }
 
+      setSubmitProgressText(t.submittingBtn);
+
       const result = await submitGuestbookEntry({
         name: name.trim(),
         message: message.trim(),
-        photo_url: finalPhotoUrl,
+        photo_urls: finalPhotoUrls,
         audio_url: voiceBase64,
       });
 
@@ -289,13 +379,14 @@ export default function GuestbookPage() {
       setErrorMsg(msg);
     } finally {
       setIsSubmitting(false);
+      setSubmitProgressText(null);
     }
   };
 
   const resetForm = () => {
     setMessage('');
-    setRawPhotoBase64(null);
-    setPhotoBase64(null);
+    setRawPhotos([]);
+    setActivePhotoIndex(0);
     setSelectedFilter('original');
     setSelectedFrame('none');
     setVoiceBase64(null);
@@ -585,28 +676,99 @@ export default function GuestbookPage() {
                   </span>
                 </div>
 
-                {/* Field 3: Photo Upload with 4 Filters & Optional Cute Frames */}
+                {/* Field 3: Photo Upload (Up to 10 Photos) with 4 Filters & Optional Cute Frames */}
                 <div className="flex flex-col gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-warm-700">
-                    {t.photoLabel}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-warm-700">
+                      {t.photoLabel}
+                    </span>
+                    {rawPhotos.length > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-semibold text-champagne-800 bg-champagne-100 px-2 py-0.5 rounded-full">
+                          {rawPhotos.length} / {MAX_PHOTOS_PER_WISH}
+                        </span>
+                        {rawPhotos.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={removeAllPhotos}
+                            className="text-[11px] text-rose-600 hover:text-rose-800 font-medium underline"
+                          >
+                            {language === 'ms' ? 'Padam Semua' : 'Clear All'}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
-                  {rawPhotoBase64 ? (
+                  {/* Hidden file inputs always mounted so "+ Add" works anytime */}
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="user"
+                    onClick={(e) => {
+                      (e.target as HTMLInputElement).value = '';
+                    }}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onClick={(e) => {
+                      (e.target as HTMLInputElement).value = '';
+                    }}
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+
+                  {activeRawPhoto ? (
                     <div className="flex flex-col gap-3">
+                      {/* Main Active Photo Preview */}
                       <div className="relative group">
                         <LivePhotoFrameOverlay frameId={selectedFrame}>
                           <div className="relative overflow-hidden bg-warm-100 rounded-xl">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={rawPhotoBase64}
-                              alt="Guest memory preview"
+                              src={activeRawPhoto}
+                              alt={`Guest memory preview ${activePhotoIndex + 1}`}
                               className="w-full max-h-64 object-cover object-center transition-all duration-300"
                               style={{ filter: currentFilterConfig.cssFilter }}
                             />
 
+                            {/* Prev / Next Navigation Arrows when multiple photos are attached */}
+                            {rawPhotos.length > 1 && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActivePhotoIndex(
+                                      (prev) => (prev - 1 + rawPhotos.length) % rawPhotos.length
+                                    )
+                                  }
+                                  aria-label="Previous photo"
+                                  className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition shadow-md z-20"
+                                >
+                                  <ChevronLeft className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setActivePhotoIndex((prev) => (prev + 1) % rawPhotos.length)
+                                  }
+                                  aria-label="Next photo"
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white transition shadow-md z-20"
+                                >
+                                  <ChevronRight className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+
                             <button
                               type="button"
-                              onClick={removePhoto}
+                              onClick={() => removePhotoAt(activePhotoIndex)}
                               aria-label={t.removePhoto}
                               className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 hover:bg-rose-600 text-white transition shadow-md z-20"
                             >
@@ -616,6 +778,7 @@ export default function GuestbookPage() {
                             <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 border border-white/20 shadow-sm z-20">
                               <Sparkles className="w-3 h-3 text-champagne-300" />
                               <span>
+                                {rawPhotos.length > 1 && `${activePhotoIndex + 1}/${rawPhotos.length} • `}
                                 {currentFilterConfig.name}
                                 {selectedFrame !== 'none' &&
                                   ` • ${currentFrameConfig.shortLabel}`}
@@ -625,9 +788,71 @@ export default function GuestbookPage() {
                         </LivePhotoFrameOverlay>
                       </div>
 
+                      {/* Horizontal Thumbnail Strip + Add More Photos Button */}
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5">
+                        {rawPhotos.map((thumb, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setActivePhotoIndex(idx)}
+                            className={`relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer border-2 transition-all ${
+                              idx === activePhotoIndex
+                                ? 'border-champagne-500 ring-2 ring-champagne-300 scale-105'
+                                : 'border-warm-200 opacity-75 hover:opacity-100'
+                            }`}
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={thumb}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              style={{ filter: currentFilterConfig.cssFilter }}
+                            />
+                            <span className="absolute bottom-0.5 left-1 text-[9px] font-mono font-bold text-white bg-black/60 px-1 rounded">
+                              {idx + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removePhotoAt(idx);
+                              }}
+                              className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 hover:bg-rose-600 text-white flex items-center justify-center"
+                              aria-label={`Remove photo ${idx + 1}`}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {rawPhotos.length < MAX_PHOTOS_PER_WISH && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              className="w-14 h-14 rounded-xl border-2 border-dashed border-champagne-400 bg-champagne-50/60 hover:bg-champagne-100/80 text-champagne-800 flex flex-col items-center justify-center flex-shrink-0 transition"
+                              title={language === 'ms' ? 'Tambah gambar dari galeri' : 'Add more photos'}
+                            >
+                              <Plus className="w-4 h-4 text-champagne-700" />
+                              <span className="text-[9px] font-bold">
+                                {language === 'ms' ? 'Tambah' : 'Add'}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cameraInputRef.current?.click()}
+                              className="w-14 h-14 rounded-xl border border-warm-200 bg-white hover:bg-warm-100 text-warm-700 flex flex-col items-center justify-center flex-shrink-0 transition"
+                              title={language === 'ms' ? 'Ambil selfie lagi' : 'Take another selfie'}
+                            >
+                              <Camera className="w-4 h-4 text-champagne-600" />
+                              <span className="text-[9px] font-medium">Selfie</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
                       {/* 4 Sets of Photo Filters */}
                       <PhotoFilterSelector
-                        photoUrl={rawPhotoBase64}
+                        photoUrl={activeRawPhoto}
                         selectedFilter={selectedFilter}
                         onSelectFilter={(fid) => setSelectedFilter(fid)}
                       />
@@ -666,28 +891,6 @@ export default function GuestbookPage() {
                       </button>
 
                       <div className="grid grid-cols-2 gap-2.5">
-                        <input
-                          ref={cameraInputRef}
-                          type="file"
-                          accept="image/*"
-                          capture="user"
-                          onClick={(e) => {
-                            (e.target as HTMLInputElement).value = '';
-                          }}
-                          onChange={handlePhotoUpload}
-                          className="hidden"
-                        />
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onClick={(e) => {
-                            (e.target as HTMLInputElement).value = '';
-                          }}
-                          onChange={handlePhotoUpload}
-                          className="hidden"
-                        />
-
                         <button
                           type="button"
                           onClick={() => cameraInputRef.current?.click()}
@@ -728,7 +931,7 @@ export default function GuestbookPage() {
                   {isSubmitting ? (
                     <>
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>{t.submittingBtn}</span>
+                      <span>{submitProgressText || t.submittingBtn}</span>
                     </>
                   ) : (
                     <>

@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import AudioPlayer from '@/components/AudioPlayer';
-import { getApprovedEntries, getSupabase } from '@/lib/supabase';
+import { getApprovedEntries, getSupabase, parsePhotoUrls } from '@/lib/supabase';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 import { getAssetPath } from '@/lib/assets';
 import { generateQrCodeDataUrl } from '@/lib/qrcode';
@@ -38,6 +38,7 @@ interface GuestEntry {
 export default function WallModePage() {
   const [entries, setEntries] = useState<GuestEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [activePhotoSubIndex, setActivePhotoSubIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGridView, setIsGridView] = useState(false);
@@ -108,16 +109,38 @@ export default function WallModePage() {
   const goToNext = useCallback(() => {
     if (entries.length <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % entries.length);
+    setActivePhotoSubIndex(0);
     setProgress(0);
   }, [entries.length]);
 
   const goToPrev = useCallback(() => {
     if (entries.length <= 1) return;
     setCurrentIndex((prev) => (prev - 1 + entries.length) % entries.length);
+    setActivePhotoSubIndex(0);
     setProgress(0);
   }, [entries.length]);
 
-  // Auto-cycle timer (7 seconds)
+  const activeEntry = entries[currentIndex];
+  const activeEntryPhotos = activeEntry ? parsePhotoUrls(activeEntry.photo_url) : [];
+  const currentSlideDuration =
+    activeEntryPhotos.length > 2
+      ? Math.min(20000, activeEntryPhotos.length * 2500)
+      : CYCLE_INTERVAL;
+
+  // Auto-cycle sub-photos inside a multi-photo Polaroid card
+  useEffect(() => {
+    setActivePhotoSubIndex(0);
+  }, [currentIndex, activeEntry?.id]);
+
+  useEffect(() => {
+    if (isPaused || isGridView || activeEntryPhotos.length <= 1) return;
+    const subTimer = setInterval(() => {
+      setActivePhotoSubIndex((prev) => (prev + 1) % activeEntryPhotos.length);
+    }, 2400);
+    return () => clearInterval(subTimer);
+  }, [isPaused, isGridView, activeEntryPhotos.length, currentIndex]);
+
+  // Auto-cycle timer
   useEffect(() => {
     if (isPaused || entries.length <= 1 || isGridView) {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
@@ -125,7 +148,7 @@ export default function WallModePage() {
     }
 
     const intervalStep = 100;
-    const increment = (intervalStep / CYCLE_INTERVAL) * 100;
+    const increment = (intervalStep / currentSlideDuration) * 100;
 
     progressTimerRef.current = setInterval(() => {
       setProgress((prev) => {
@@ -140,7 +163,7 @@ export default function WallModePage() {
     return () => {
       if (progressTimerRef.current) clearInterval(progressTimerRef.current);
     };
-  }, [isPaused, entries.length, isGridView, goToNext]);
+  }, [isPaused, entries.length, isGridView, goToNext, currentSlideDuration]);
 
   // Fullscreen toggle handler
   const toggleFullscreen = () => {
@@ -188,8 +211,6 @@ export default function WallModePage() {
       document.removeEventListener('webkitfullscreenchange', handleFsChange);
     };
   }, []);
-
-  const activeEntry = entries[currentIndex];
 
   const formatTimestamp = (dateStr: string) => {
     try {
@@ -322,47 +343,55 @@ export default function WallModePage() {
         ) : isGridView ? (
           /* Event Gallery Grid Mode (2xN on mobile, 3xN on tablet, 4xN on desktop) */
           <div className="w-full max-h-[78vh] overflow-y-auto pr-1 sm:pr-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
-            {entries.map((entry) => (
-              <div
-                key={entry.id}
-                className="bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform hover:scale-[1.02]"
-              >
-                <div>
-                  {entry.photo_url && (
-                    <div className="mb-2.5 sm:mb-4 rounded-lg sm:rounded-xl overflow-hidden bg-warm-100/70 border border-warm-200/80 max-h-44 sm:max-h-72 w-full flex items-center justify-center">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={entry.photo_url}
-                        alt={`Photo from ${entry.name}`}
-                        className="max-h-44 sm:max-h-72 w-auto max-w-full object-contain rounded-lg"
-                        loading="lazy"
-                      />
+            {entries.map((entry) => {
+              const entryPhotos = parsePhotoUrls(entry.photo_url);
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform hover:scale-[1.02]"
+                >
+                  <div>
+                    {entryPhotos.length > 0 && (
+                      <div className="relative mb-2.5 sm:mb-4 rounded-lg sm:rounded-xl overflow-hidden bg-warm-100/70 border border-warm-200/80 max-h-44 sm:max-h-72 w-full flex items-center justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={entryPhotos[0]}
+                          alt={`Photo from ${entry.name}`}
+                          className="max-h-44 sm:max-h-72 w-auto max-w-full object-contain rounded-lg"
+                          loading="lazy"
+                        />
+                        {entryPhotos.length > 1 && (
+                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold backdrop-blur-xs">
+                            +{entryPhotos.length - 1} photos
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="font-serif italic text-xs sm:text-base text-warm-800 line-clamp-3 sm:line-clamp-4 mb-2 sm:mb-3 leading-snug">
+                      &ldquo;{entry.message}&rdquo;
+                    </p>
+                  </div>
+
+                  <div className="pt-2 sm:pt-3 border-t border-warm-100 flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-serif font-bold text-champagne-900 text-xs sm:text-sm truncate">
+                        {entry.name}
+                      </h4>
+                      <span className="text-[9px] sm:text-[10px] text-warm-500 block truncate">
+                        {formatTimestamp(entry.created_at)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {entry.audio_url && (
+                    <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2">
+                      <AudioPlayer src={entry.audio_url} compact />
                     </div>
                   )}
-
-                  <p className="font-serif italic text-xs sm:text-base text-warm-800 line-clamp-3 sm:line-clamp-4 mb-2 sm:mb-3 leading-snug">
-                    &ldquo;{entry.message}&rdquo;
-                  </p>
                 </div>
-
-                <div className="pt-2 sm:pt-3 border-t border-warm-100 flex items-center justify-between">
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-serif font-bold text-champagne-900 text-xs sm:text-sm truncate">
-                      {entry.name}
-                    </h4>
-                    <span className="text-[9px] sm:text-[10px] text-warm-500 block truncate">
-                      {formatTimestamp(entry.created_at)}
-                    </span>
-                  </div>
-                </div>
-
-                {entry.audio_url && (
-                  <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2">
-                    <AudioPlayer src={entry.audio_url} compact />
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           /* Cinematic Spotlight Polaroid Mode */
@@ -379,17 +408,43 @@ export default function WallModePage() {
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-2">
                 {/* Left: Photo column (if available) */}
-                {activeEntry.photo_url ? (
+                {activeEntryPhotos.length > 0 ? (
                   <div className="lg:col-span-5 flex flex-col items-center">
                     <div className="relative p-3 bg-white rounded-2xl shadow-polaroid border border-warm-200 rotate-[-1.5deg] hover:rotate-0 transition-transform duration-500 max-w-sm w-full">
-                      <div className="max-h-[360px] sm:max-h-[440px] flex items-center justify-center rounded-xl overflow-hidden bg-warm-100/60">
+                      <div className="relative max-h-[360px] sm:max-h-[440px] flex items-center justify-center rounded-xl overflow-hidden bg-warm-100/60">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={activeEntry.photo_url}
+                          src={activeEntryPhotos[activePhotoSubIndex] || activeEntryPhotos[0]}
                           alt={`Memory captured by ${activeEntry.name}`}
-                          className="max-h-[360px] sm:max-h-[440px] w-auto max-w-full object-contain rounded-lg"
+                          className="max-h-[360px] sm:max-h-[440px] w-auto max-w-full object-contain rounded-lg transition-all duration-300"
                         />
+
+                        {activeEntryPhotos.length > 1 && (
+                          <div className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs text-white text-[11px] font-mono font-semibold">
+                            {activePhotoSubIndex + 1} / {activeEntryPhotos.length}
+                          </div>
+                        )}
                       </div>
+
+                      {/* Carousel dots when entry has multiple photos */}
+                      {activeEntryPhotos.length > 1 && (
+                        <div className="flex items-center justify-center gap-1.5 pt-2.5">
+                          {activeEntryPhotos.map((_, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setActivePhotoSubIndex(idx)}
+                              aria-label={`View photo ${idx + 1}`}
+                              className={`h-1.5 rounded-full transition-all ${
+                                idx === activePhotoSubIndex
+                                  ? 'w-4 bg-champagne-600'
+                                  : 'w-1.5 bg-warm-300 hover:bg-warm-400'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      )}
+
                       <div className="pt-2 text-center">
                         <span className="font-serif italic text-xs text-warm-500">
                           Captured at the celebration
@@ -414,7 +469,7 @@ export default function WallModePage() {
                 {/* Right: Message & Signature column */}
                 <div
                   className={`${
-                    activeEntry.photo_url ? 'lg:col-span-7' : 'lg:col-span-8'
+                    activeEntryPhotos.length > 0 ? 'lg:col-span-7' : 'lg:col-span-8'
                   } flex flex-col justify-between gap-6`}
                 >
                   {/* Message Quote */}

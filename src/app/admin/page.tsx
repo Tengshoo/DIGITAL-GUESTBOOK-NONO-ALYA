@@ -19,6 +19,8 @@ import {
   Sparkles,
   ArrowUpDown,
   FolderOpen,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import AudioPlayer from '@/components/AudioPlayer';
 import Link from 'next/link';
@@ -26,6 +28,7 @@ import {
   getAllEntriesForAdmin,
   updateEntryApproval,
   deleteGuestEntry,
+  parsePhotoUrls,
 } from '@/lib/supabase';
 import { getGoogleDriveFolderUrl } from '@/lib/googleDrive';
 import { EVENT_CONFIG } from '@/config/eventConfig';
@@ -52,7 +55,8 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'hidden'>('all');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewPhotos, setPreviewPhotos] = useState<string[]>([]);
+  const [previewPhotoIndex, setPreviewPhotoIndex] = useState<number>(0);
 
   // Check sessionStorage for existing authenticated PIN
   useEffect(() => {
@@ -193,7 +197,7 @@ export default function AdminDashboardPage() {
   const totalCount = entries.length;
   const approvedCount = entries.filter((e) => e.is_approved === 1).length;
   const hiddenCount = entries.filter((e) => e.is_approved === 0).length;
-  const photoCount = entries.filter((e) => !!e.photo_url).length;
+  const photoCount = entries.reduce((sum, e) => sum + parsePhotoUrls(e.photo_url).length, 0);
   const audioCount = entries.filter((e) => !!e.audio_url).length;
 
   // Unauthenticated PIN Form View
@@ -514,22 +518,34 @@ export default function AdminDashboardPage() {
 
                     {/* Photo thumbnail */}
                     <td className="py-3.5 px-4 text-center">
-                      {entry.photo_url ? (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewImage(entry.photo_url || null)}
-                          className="w-12 h-12 rounded-xl overflow-hidden border border-warm-200 mx-auto block hover:scale-110 transition shadow-sm group relative"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={entry.photo_url}
-                            alt={`Photo by ${entry.name}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ) : (
-                        <span className="text-warm-300 font-mono">-</span>
-                      )}
+                      {(() => {
+                        const entryPhotos = parsePhotoUrls(entry.photo_url);
+                        if (entryPhotos.length === 0) {
+                          return <span className="text-warm-300 font-mono">-</span>;
+                        }
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewPhotos(entryPhotos);
+                              setPreviewPhotoIndex(0);
+                            }}
+                            className="w-12 h-12 rounded-xl overflow-hidden border border-warm-200 mx-auto block hover:scale-110 transition shadow-sm group relative"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={entryPhotos[0]}
+                              alt={`Photo by ${entry.name}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {entryPhotos.length > 1 && (
+                              <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 rounded bg-black/75 text-white text-[9px] font-mono font-bold">
+                                +{entryPhotos.length - 1}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </td>
 
                     {/* Audio Note */}
@@ -594,28 +610,76 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Lightbox Modal for Photo / Signature Full Preview */}
-      {previewImage && (
+      {/* Lightbox Modal for Multi-Photo Preview */}
+      {previewPhotos.length > 0 && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={() => setPreviewImage(null)}
+          onClick={() => setPreviewPhotos([])}
         >
           <div
-            className="relative max-w-2xl max-h-[90dvh] bg-white rounded-3xl p-3 shadow-2xl border-2 border-champagne-300"
+            className="relative max-w-2xl max-h-[90dvh] bg-white rounded-3xl p-3 shadow-2xl border-2 border-champagne-300 flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg"
+              onClick={() => setPreviewPhotos([])}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
             >
               ✕
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewImage}
-              alt="Enlarged preview"
-              className="max-h-[80dvh] w-auto mx-auto rounded-2xl object-contain"
-            />
+
+            <div className="relative flex items-center justify-center">
+              {previewPhotos.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhotoIndex(
+                        (prev) => (prev - 1 + previewPhotos.length) % previewPhotos.length
+                      )
+                    }
+                    className="absolute left-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhotoIndex((prev) => (prev + 1) % previewPhotos.length)
+                    }
+                    className="absolute right-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhotos[previewPhotoIndex] || previewPhotos[0]}
+                alt="Enlarged preview"
+                className="max-h-[75dvh] w-auto mx-auto rounded-2xl object-contain"
+              />
+            </div>
+
+            {previewPhotos.length > 1 && (
+              <div className="flex items-center gap-2 mt-2.5 overflow-x-auto max-w-full px-2 pb-1">
+                {previewPhotos.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setPreviewPhotoIndex(idx)}
+                    className={`w-12 h-12 rounded-lg overflow-hidden border-2 flex-shrink-0 transition ${
+                      idx === previewPhotoIndex
+                        ? 'border-champagne-600 scale-105'
+                        : 'border-warm-200 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

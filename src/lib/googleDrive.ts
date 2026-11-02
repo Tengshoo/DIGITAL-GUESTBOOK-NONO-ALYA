@@ -120,3 +120,48 @@ export async function uploadPhotoToGoogleDrive({
     return { success: false, error: errorMsg };
   }
 }
+
+/**
+ * Sequentially uploads multiple photos (up to 10) for a single wish to Google Drive
+ * so that all photos are backed up cleanly without overwhelming Google Apps Script locks.
+ */
+export async function uploadPhotosToGoogleDrive({
+  photosBase64,
+  guestName,
+  message = '',
+}: {
+  photosBase64: string[];
+  guestName: string;
+  message?: string;
+}): Promise<{ success: boolean; uploadedCount: number }> {
+  if (!isGoogleDriveConfigured() || !photosBase64 || photosBase64.length === 0) {
+    return { success: true, uploadedCount: 0 };
+  }
+
+  const cleanName =
+    (guestName || 'Tetamu')
+      .replace(/[^a-zA-Z0-9_\-\s]/g, '')
+      .trim()
+      .slice(0, 60) || 'Tetamu';
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const cleanPrefix = EVENT_CONFIG.title.replace(/[^a-zA-Z0-9]/g, '') || 'Guestbook';
+
+  let uploadedCount = 0;
+  const total = photosBase64.length;
+
+  for (let i = 0; i < total; i++) {
+    const suffix = total > 1 ? `_${i + 1}of${total}` : '';
+    const filename = `${cleanPrefix}_${cleanName}${suffix}_${timestamp}.jpg`;
+    const res = await uploadPhotoToGoogleDrive({
+      photoBase64: photosBase64[i],
+      guestName,
+      message,
+      filename,
+    });
+    if (res.success) {
+      uploadedCount++;
+    }
+  }
+
+  return { success: uploadedCount > 0, uploadedCount };
+}
