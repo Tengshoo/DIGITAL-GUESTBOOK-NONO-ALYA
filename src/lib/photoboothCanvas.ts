@@ -194,6 +194,8 @@ export async function generatePhotoboothStripCanvas(
       let content = tb.text || '';
       if (tb.binding === 'event.name') {
         content = eventInfo.welcomeTitle;
+      } else if (tb.binding === 'event.tagline') {
+        content = EVENT_CONFIG.photobooth?.tagline ?? eventInfo.miniTitle ?? '';
       } else if (tb.binding === 'event.date') {
         content = eventInfo.date;
       } else if (tb.binding === 'event.venue') {
@@ -202,6 +204,7 @@ export async function generatePhotoboothStripCanvas(
         content = eventInfo.hashtag;
       }
 
+      if (!content) continue;
       if (tb.uppercase) {
         content = content.toUpperCase();
       }

@@ -31,9 +31,9 @@ export default function PhotoboothStripView({
   onSelectSlot,
   onClearSlot,
   eventInfo = {
-    welcomeTitle: EVENT_CONFIG.title,
-    miniTitle: EVENT_CONFIG.eventType.ms,
-    date: EVENT_CONFIG.date.en,
+    welcomeTitle: EVENT_CONFIG.photobooth?.coupleNames || EVENT_CONFIG.title,
+    miniTitle: EVENT_CONFIG.photobooth?.tagline ?? EVENT_CONFIG.eventType.en,
+    date: EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date.numeric || EVENT_CONFIG.date.en,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
   },
@@ -204,6 +204,8 @@ export default function PhotoboothStripView({
         let content = tb.text || '';
         if (tb.binding === 'event.name') {
           content = eventInfo.welcomeTitle;
+        } else if (tb.binding === 'event.tagline') {
+          content = EVENT_CONFIG.photobooth?.tagline ?? eventInfo.miniTitle ?? '';
         } else if (tb.binding === 'event.date') {
           content = eventInfo.date;
         } else if (tb.binding === 'event.venue') {
@@ -211,6 +213,8 @@ export default function PhotoboothStripView({
         } else if (tb.binding === 'event.hashtag') {
           content = eventInfo.hashtag;
         }
+
+        if (!content) return null;
 
         if (tb.uppercase) {
           content = content.toUpperCase();

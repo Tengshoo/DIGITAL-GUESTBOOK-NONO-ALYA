@@ -20,7 +20,19 @@ export function isGoogleDriveConfigured(): boolean {
 }
 
 export function getGoogleDriveFolderUrl(): string {
-  return GOOGLE_DRIVE_FOLDER_URL;
+  const raw = (
+    EVENT_CONFIG.googleDrive.folderUrl ||
+    process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL ||
+    ''
+  ).trim();
+  if (!raw) {
+    return 'https://drive.google.com/drive/my-drive';
+  }
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+  // If user pasted just the Google Drive Folder ID in eventConfig.ts, build the full URL automatically
+  return `https://drive.google.com/drive/folders/${raw}`;
 }
 
 export interface GoogleDriveUploadParams {
