@@ -33,6 +33,12 @@ export const EVENT_CONFIG = {
   // 5. Social Media Hashtag
   hashtag: '#FikriAlya',
 
+  // 5b. Cover Welcome Quote (Displayed on the main landing page)
+  welcomeMessage: {
+    en: 'We’re so thrilled to celebrate with you! Snap your favorite moments, strike a pose, and leave your sweetest wishes to make today’s memories last forever!',
+    ms: 'Kami amat teruja meraikan hari bahagia ini bersama anda! Rakam momen terindah, bergaya di photobooth, dan titipkan ucapan paling manis buat kenangan abadi kami!',
+  },
+
   // 6. Photobooth Studio Strip Customization
   photobooth: {
     // Couple names printed on the photobooth strips (e.g. 'Fikri & Alya')

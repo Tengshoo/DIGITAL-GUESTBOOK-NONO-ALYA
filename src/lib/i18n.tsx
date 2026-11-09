@@ -89,7 +89,9 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     date: EVENT_CONFIG.date.en,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
-    welcomeMessage: 'Share your photos, videos, or heartfelt wishes captured with us today.',
+    welcomeMessage:
+      EVENT_CONFIG.welcomeMessage?.en ||
+      'We’re so thrilled to celebrate with you! Snap your favorite moments, strike a pose, and leave your sweetest wishes to make today’s memories last forever!',
     yourName: 'Your Name',
     enterNamePlaceholder: 'Enter your name...',
     shareMomentBtn: 'Share Your Wishes',
@@ -160,7 +162,9 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     date: EVENT_CONFIG.date.ms,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
-    welcomeMessage: 'Kongsi gambar, video, atau momen indah yang anda rakam bersama kami.',
+    welcomeMessage:
+      EVENT_CONFIG.welcomeMessage?.ms ||
+      'Kami amat teruja meraikan hari bahagia ini bersama anda! Rakam momen terindah, bergaya di photobooth, dan titipkan ucapan paling manis buat kenangan abadi kami!',
     yourName: 'Nama anda',
     enterNamePlaceholder: 'Masukkan nama anda...',
     shareMomentBtn: 'Kongsikan Momen',
