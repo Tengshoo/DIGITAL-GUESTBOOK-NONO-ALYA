@@ -88,7 +88,7 @@ export const EVENT_CONFIG = {
   },
 
   // 10. Host Admin PIN (Default PIN for /admin moderation page)
-  adminPin: '1234',
+  adminPin: '1912',
 
   // 11. Photo Upload Limit (Total allowed across Gallery, Selfie & Photobooth)
   // Set to 500 or any custom number. Change anytime!
