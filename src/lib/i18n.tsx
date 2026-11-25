@@ -95,8 +95,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     yourName: 'Your Name',
     enterNamePlaceholder: 'Enter your name...',
     shareMomentBtn: 'Share Your Wishes',
-    photoboothBtn: '📸 Photobooth Studio (6 Strip Styles)',
-    liveWallBtn: 'Open Gallery & Live Wall',
+    photoboothBtn: '📸 Photobooth Studio',
+    liveWallBtn: 'Gallery & Live Wall',
     footerCelebration: `memoira • {title} ${EVENT_CONFIG.eventType?.en || 'Wedding Celebration'}`,
 
     // Guestbook Modal
@@ -106,7 +106,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     wishesPlaceholder: 'Write your warmest wishes, congratulations, or lovely memories...',
     charsCount: 'characters',
     photoLabel: 'Photos / Selfies (Optional • Up to 10)',
-    photoboothModalBtn: '✨ Snap Photobooth Strip (6 Strip Styles)',
+    photoboothModalBtn: '✨ Snap Photobooth Strip',
     selfieBtn: 'Selfie',
     choosePhotoBtn: 'Choose Photos',
     removePhoto: 'Remove photo',
@@ -168,8 +168,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     yourName: 'Nama anda',
     enterNamePlaceholder: 'Masukkan nama anda...',
     shareMomentBtn: 'Kongsikan Momen',
-    photoboothBtn: '📸 Studio Photobooth (6 Pilihan Strip)',
-    liveWallBtn: 'Buka Galeri & Live Wall',
+    photoboothBtn: '📸 Studio Photobooth',
+    liveWallBtn: 'Galeri & Live Wall',
     footerCelebration: `memoira • ${EVENT_CONFIG.eventType?.ms || 'Majlis Perkahwinan'} {title}`,
 
     // Guestbook Modal
@@ -179,7 +179,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     wishesPlaceholder: 'Tuliskan ucapan tahniah, doa keberkatan, atau memori bersama pasangan...',
     charsCount: 'aksara',
     photoLabel: 'Gambar / Selfie (Pilihan • Sehingga 10)',
-    photoboothModalBtn: '✨ Ambil Strip Photobooth (6 Pilihan Gaya)',
+    photoboothModalBtn: '✨ Ambil Strip Photobooth',
     selfieBtn: 'Selfie',
     choosePhotoBtn: 'Pilih Gambar',
     removePhoto: 'Padam gambar',
