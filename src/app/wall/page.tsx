@@ -542,11 +542,11 @@ export default function WallModePage() {
 
               <button
                 onClick={() => setIsPaused(!isPaused)}
+                title={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
                 aria-label={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-warm-900/80 hover:bg-warm-800 text-champagne-300 border border-warm-700 transition font-medium"
+                className="p-2 rounded-full bg-warm-900/80 hover:bg-warm-800 text-champagne-300 border border-warm-700 transition"
               >
-                {isPaused ? <Play className="w-3.5 h-3.5 fill-current" /> : <Pause className="w-3.5 h-3.5 fill-current" />}
-                <span>{isPaused ? 'Paused' : 'Auto-playing'}</span>
+                {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}
               </button>
 
               <button
@@ -563,7 +563,7 @@ export default function WallModePage() {
             </div>
           )}
 
-          {/* Quick icon actions (Home, QR Code, Admin Moderation) */}
+          {/* Quick icon actions (Home, Admin Moderation) */}
           <div className="ml-auto flex items-center gap-2">
             <Link
               href="/"
@@ -573,15 +573,6 @@ export default function WallModePage() {
             >
               <Home className="w-4 h-4" />
             </Link>
-            <button
-              type="button"
-              onClick={() => setShowQrModal(true)}
-              title="Kongsikan Memori Anda (QR)"
-              aria-label="Kongsikan Memori Anda"
-              className="p-2 rounded-full bg-warm-900/70 hover:bg-warm-800 text-champagne-300 hover:text-champagne-100 border border-warm-700/70 transition"
-            >
-              <QrCode className="w-4 h-4" />
-            </button>
             <Link
               href="/admin"
               title="Admin Moderation"
