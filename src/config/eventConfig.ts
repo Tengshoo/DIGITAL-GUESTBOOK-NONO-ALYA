@@ -84,7 +84,7 @@ export const EVENT_CONFIG = {
     // Direct link to the customer's Google Drive folder (leave empty if not needed)
     folderUrl:
       process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL ||
-      '',
+      'https://drive.google.com/drive/folders/1i2PkaTzljP-Y0rqKi_CPcLwDfXqHl7NM?usp=drive_link',
   },
 
   // 10. Host Admin PIN (Default PIN for /admin moderation page)
