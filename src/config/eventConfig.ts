@@ -50,13 +50,13 @@ export const EVENT_CONFIG = {
     date: '19.12.2026',
 
     // Tagline / Subtitle printed on photobooth strips
-    tagline: 'romantic memories',
+    tagline: 'The Wedding of',
   },
 
   // 7. Cover Photos (Save new photos in /public/assets/img/ folder)
   images: {
     // Couple portrait avatar (circular photo on front page cover)
-    avatar: '/assets/img/arman-farah-welcome.jpg',
+    avatar: '/assets/img/Fikri-Alya-Portrait.jpeg',
     // Background venue image (full-bleed cinematic cover photo)
     background: '/assets/img/arman-farah-venue.png?v=2',
   },
@@ -82,7 +82,7 @@ export const EVENT_CONFIG = {
       process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
       'https://script.google.com/macros/s/AKfycbzZ9b0vTB3bzSRoTjRj6Ak1LSdKJz5JLAYg2PHEsZGUcdGQ-wIC9CYEwiJwav5lOwJC/exec',
     // Direct link to the customer's Google Drive folder (leave empty if not needed)
-    folderUrl: 
+    folderUrl:
       process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL ||
       '',
   },
@@ -92,5 +92,5 @@ export const EVENT_CONFIG = {
 
   // 11. Photo Upload Limit (Total allowed across Gallery, Selfie & Photobooth)
   // Set to 500 or any custom number. Change anytime!
-  photoUploadLimit: 5000,
+  photoUploadLimit: 50000,
 };
