@@ -16,6 +16,8 @@ import {
   Monitor,
   Volume2,
   Camera,
+  Home,
+  Shield,
 } from 'lucide-react';
 import Link from 'next/link';
 import AudioPlayer from '@/components/AudioPlayer';
@@ -561,27 +563,32 @@ export default function WallModePage() {
             </div>
           )}
 
-          {/* Quick link to sign */}
-          <div className="ml-auto flex items-center gap-4 text-xs">
+          {/* Quick icon actions (Home, QR Code, Admin Moderation) */}
+          <div className="ml-auto flex items-center gap-2">
             <Link
               href="/"
-              className="text-warm-400 hover:text-champagne-300 transition flex items-center gap-1"
+              title="Laman Utama"
+              aria-label="Laman Utama"
+              className="p-2 rounded-full bg-warm-900/70 hover:bg-warm-800 text-warm-300 hover:text-champagne-300 border border-warm-700/70 transition"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Laman Utama</span>
+              <Home className="w-4 h-4" />
             </Link>
             <button
+              type="button"
               onClick={() => setShowQrModal(true)}
-              className="hidden sm:flex items-center gap-1.5 text-champagne-300 hover:text-champagne-100 underline decoration-champagne-500/50 underline-offset-4"
+              title="Kongsikan Memori Anda (QR)"
+              aria-label="Kongsikan Memori Anda"
+              className="p-2 rounded-full bg-warm-900/70 hover:bg-warm-800 text-champagne-300 hover:text-champagne-100 border border-warm-700/70 transition"
             >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>Kongsikan Memori Anda</span>
+              <QrCode className="w-4 h-4" />
             </button>
             <Link
               href="/admin"
-              className="text-warm-500 hover:text-warm-300 transition"
+              title="Admin Moderation"
+              aria-label="Admin Moderation"
+              className="p-2 rounded-full bg-warm-900/70 hover:bg-warm-800 text-warm-400 hover:text-warm-200 border border-warm-700/70 transition"
             >
-              Admin Moderation
+              <Shield className="w-4 h-4" />
             </Link>
           </div>
         </div>
