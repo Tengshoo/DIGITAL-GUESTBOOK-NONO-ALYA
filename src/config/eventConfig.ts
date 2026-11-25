@@ -58,7 +58,7 @@ export const EVENT_CONFIG = {
     // Couple portrait avatar (circular photo on front page cover)
     avatar: '/assets/img/Fikri-Alya-Portrait.jpeg',
     // Background venue image (full-bleed cinematic cover photo)
-    background: '/assets/img/arman-farah-venue.png?v=2',
+    background: '/assets/img/Fikri-Alya-Background.jpg',
   },
 
   // 8. Supabase Cloud Database (For Live Wall & Online Guestbook)
