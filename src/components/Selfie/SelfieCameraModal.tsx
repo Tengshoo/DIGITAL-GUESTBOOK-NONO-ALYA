@@ -18,6 +18,8 @@ import {
   Square,
   Volume2,
   VolumeX,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import {
   SELFIE_FRAMES,
@@ -39,6 +41,56 @@ interface SelfieCameraModalProps {
 
 const ZOOM_STEPS = [1, 1.5, 2] as const;
 const MAX_VIDEO_SECONDS = 30;
+
+function isIOSDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod|Android/i.test(navigator.userAgent) || isIOSDevice();
+}
+
+/**
+ * Wraps getUserMedia with a hard timeout so hung OS/WebView permission prompts can NEVER freeze the UI
+ */
+function getUserMediaWithTimeout(
+  constraints: MediaStreamConstraints,
+  timeoutMs = 4500
+): Promise<MediaStream> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        reject(new Error('Camera request timed out'));
+      }
+    }, timeoutMs);
+
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        clearTimeout(timer);
+        if (settled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        settled = true;
+        resolve(stream);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        if (!settled) {
+          settled = true;
+          reject(err);
+        }
+      });
+  });
+}
 
 export default function SelfieCameraModal({
   isOpen,
@@ -69,6 +121,7 @@ export default function SelfieCameraModal({
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [flashEnabled, setFlashEnabled] = useState<boolean>(false);
   const [timerEnabled, setTimerEnabled] = useState<boolean>(false);
+  const [micEnabled, setMicEnabled] = useState<boolean>(false);
   const [zoomIndex, setZoomIndex] = useState<number>(0);
   const [captureMode, setCaptureMode] = useState<'photo' | 'video'>('photo');
 
@@ -76,14 +129,12 @@ export default function SelfieCameraModal({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const reviewVideoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const streamHasAudioRef = useRef<boolean>(false);
   const cameraReqIdRef = useRef<number>(0);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isCameraReady, setIsCameraReady] = useState<boolean>(false);
   const [isCameraLoading, setIsCameraLoading] = useState<boolean>(true);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [transitionPosterUrl, setTransitionPosterUrl] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isScreenFlashing, setIsScreenFlashing] = useState<boolean>(false);
 
@@ -99,10 +150,11 @@ export default function SelfieCameraModal({
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
   const [recordedVideoFile, setRecordedVideoFile] = useState<File | null>(null);
+  const [recordedHasAudio, setRecordedHasAudio] = useState<boolean>(false);
   const [isReviewMuted, setIsReviewMuted] = useState<boolean>(true);
   const [videoStatusToast, setVideoStatusToast] = useState<string | null>(null);
 
-  // Photo review state (strictly separate from recordedVideoUrl so video never shows as a photo!)
+  // Photo review state
   const [rawCapturedUrl, setRawCapturedUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -126,7 +178,7 @@ export default function SelfieCameraModal({
     setVideoStatusToast(msg);
     setTimeout(() => {
       setVideoStatusToast((prev) => (prev === msg ? null : prev));
-    }, 2800);
+    }, 2600);
   }, []);
 
   const playShutterSound = useCallback(() => {
@@ -175,88 +227,37 @@ export default function SelfieCameraModal({
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-    streamHasAudioRef.current = false;
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
     setIsRecordingVideo(false);
     setIsCameraReady(false);
-    setTransitionPosterUrl(null);
   }, []);
 
-  const grabVideoFrameDataUrl = useCallback((): string | null => {
-    const video = videoRef.current;
-    if (!video || !video.videoWidth || !video.videoHeight) return null;
-
-    const targetW = 1080;
-    const targetH = 1920;
-    const canvas = document.createElement('canvas');
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    const targetRatio = targetW / targetH;
-    const videoRatio = vw / vh;
-
-    let cropW = vw;
-    let cropH = vh;
-    if (videoRatio > targetRatio) {
-      cropW = vh * targetRatio;
-    } else {
-      cropH = vw / targetRatio;
-    }
-
-    cropW = cropW / zoomLevel;
-    cropH = cropH / zoomLevel;
-    const sx = (vw - cropW) / 2;
-    const sy = (vh - cropH) / 2;
-
-    ctx.save();
-    if (facingMode === 'user') {
-      ctx.translate(targetW, 0);
-      ctx.scale(-1, 1);
-    }
-    ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, targetW, targetH);
-    ctx.restore();
-
-    return canvas.toDataURL('image/jpeg', 0.9);
-  }, [facingMode, zoomLevel]);
-
   /**
-   * Starts a unified WebRTC stream (`video` only for Photo mode, or unified `video + audio` for Video mode).
-   * Never calls a second `getUserMedia` during recording — eliminating the iOS Safari black-screen bug!
+   * Fast, timeout-protected mobile camera initializer.
+   * Uses the exact proven constraints as PhotoboothStudio (no `frameRate` cap, no artificial delays
+   * before `getUserMedia` so iOS user-gesture activation stays 100% intact).
    */
   const startCamera = useCallback(
-    async (wantAudio = false, targetFacing: 'user' | 'environment' = facingMode) => {
+    async (
+      targetFacing: 'user' | 'environment' = facingMode,
+      withAudio: boolean = false
+    ) => {
       if (!isOpen) return;
       const reqId = ++cameraReqIdRef.current;
 
-      // Capture seamless freeze-frame before releasing old track so switching modes/lenses never flashes black
-      const poster = grabVideoFrameDataUrl();
-      if (poster) {
-        setTransitionPosterUrl(poster);
-      } else {
-        setIsCameraLoading(true);
-      }
+      setIsCameraLoading(true);
       setCameraError(null);
       setIsCameraReady(false);
 
+      // Stop previous tracks synchronously right before getUserMedia (preserves iOS user gesture!)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
       try {
-        const hadExistingStream = Boolean(streamRef.current);
-        if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
-          streamRef.current = null;
-        }
-        streamHasAudioRef.current = false;
-
-        if (hadExistingStream) {
-          await new Promise((r) => setTimeout(r, 120));
-        }
-        if (reqId !== cameraReqIdRef.current) return;
-
         if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
           throw new Error(
             language === 'ms'
@@ -266,54 +267,56 @@ export default function SelfieCameraModal({
         }
 
         let stream: MediaStream | null = null;
-        let gotAudio = false;
 
-        // 1. If Video mode wants audio, request ONE unified (video + audio) stream first
-        if (wantAudio) {
+        if (withAudio) {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: { ideal: targetFacing },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                frameRate: { ideal: 30, max: 30 },
+            stream = await getUserMediaWithTimeout(
+              {
+                video: {
+                  facingMode: { ideal: targetFacing },
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                },
+                audio: true,
               },
-              audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-              },
-            });
-            gotAudio = stream.getAudioTracks().length > 0;
+              3500
+            );
           } catch {
-            // Mic denied or overconstrained: fall through cleanly to video-only stream
+            // Mic timed out or denied -> automatically fall back to fast video-only camera!
             stream = null;
-            gotAudio = false;
+            setMicEnabled(false);
+            showToast(
+              language === 'ms'
+                ? 'Mikrofon tidak dibenarkan — merakam video tanpa audio.'
+                : 'Mic unavailable — recording video without audio.'
+            );
           }
         }
 
-        // 2. Video-only stream (default for Photo mode, or fallback if mic permission was declined)
         if (!stream) {
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                facingMode: { ideal: targetFacing },
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                frameRate: { ideal: 30, max: 30 },
+            stream = await getUserMediaWithTimeout(
+              {
+                video: {
+                  facingMode: { ideal: targetFacing },
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 },
+                },
+                audio: false,
               },
-              audio: false,
-            });
+              5000
+            );
           } catch {
             try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: targetFacing },
-                audio: false,
-              });
+              stream = await getUserMediaWithTimeout(
+                {
+                  video: { facingMode: { ideal: targetFacing } },
+                  audio: false,
+                },
+                4000
+              );
             } catch {
-              stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: false,
-              });
+              stream = await getUserMediaWithTimeout({ video: true, audio: false }, 4000);
             }
           }
         }
@@ -324,11 +327,9 @@ export default function SelfieCameraModal({
         }
 
         streamRef.current = stream;
-        streamHasAudioRef.current = gotAudio;
 
         const video = videoRef.current;
         if (video) {
-          // Live preview <video> MUST always stay muted so speakers never feedback-screech
           video.muted = true;
           video.defaultMuted = true;
           video.playsInline = true;
@@ -342,31 +343,29 @@ export default function SelfieCameraModal({
             markedReady = true;
             setIsCameraReady(true);
             setIsCameraLoading(false);
-            setTransitionPosterUrl(null);
           };
 
-          const attemptPlay = async () => {
+          const handlePlay = async () => {
             try {
               await video.play();
               markReady();
             } catch {
-              // Safari/WebView will fire onloadeddata / onplaying
+              // Handled by loadeddata / playing
             }
           };
 
-          video.onloadedmetadata = attemptPlay;
+          video.onloadedmetadata = handlePlay;
           video.onloadeddata = markReady;
           video.onplaying = markReady;
 
           if (video.readyState >= 2) {
-            await attemptPlay();
+            handlePlay();
             markReady();
           } else {
-            attemptPlay();
+            handlePlay();
           }
         } else {
           setIsCameraLoading(false);
-          setTransitionPosterUrl(null);
         }
       } catch (err: unknown) {
         if (reqId !== cameraReqIdRef.current) return;
@@ -379,47 +378,68 @@ export default function SelfieCameraModal({
         setCameraError(msg);
         setIsCameraLoading(false);
         setIsCameraReady(false);
-        setTransitionPosterUrl(null);
       }
     },
-    [facingMode, grabVideoFrameDataUrl, isOpen, language]
+    [facingMode, isOpen, language, showToast]
   );
 
-  // Switch between Photo & Video modes cleanly inside user click gesture
+  /**
+   * Switching between `Photo` and `Video · 30s` NEVER restarts the camera stream!
+   * Zero black screen, zero sensor hang, 0ms instant switch.
+   * And if the camera ever stopped or failed earlier, switching tabs automatically revives it!
+   */
   const handleSelectCaptureMode = (nextMode: 'photo' | 'video') => {
-    if (isRecordingVideo || nextMode === captureMode) return;
+    if (isRecordingVideo) return;
     setCaptureMode(nextMode);
 
-    if (nextMode === 'video') {
-      // Upgrade to unified video+audio stream right on tab tap (so Record tap needs 0 getUserMedia calls!)
-      if (!streamRef.current || !streamHasAudioRef.current) {
-        startCamera(true, facingMode);
-      } else {
-        streamRef.current.getAudioTracks().forEach((t) => {
+    const hasLiveVideo =
+      streamRef.current &&
+      streamRef.current.getVideoTracks().some((t) => t.readyState === 'live');
+
+    if (!hasLiveVideo) {
+      startCamera(facingMode, nextMode === 'video' && micEnabled);
+    }
+  };
+
+  // Optional Mic toggle in Video mode (explicit user tap gesture + automatic video-only fallback)
+  const handleToggleMic = () => {
+    if (isRecordingVideo) return;
+    const nextMic = !micEnabled;
+    setMicEnabled(nextMic);
+
+    if (nextMic) {
+      const alreadyHasLiveAudio =
+        streamRef.current &&
+        streamRef.current.getAudioTracks().some((t) => t.readyState === 'live');
+      if (alreadyHasLiveAudio) {
+        streamRef.current!.getAudioTracks().forEach((t) => {
           t.enabled = true;
         });
+      } else {
+        startCamera(facingMode, true);
       }
     } else if (streamRef.current) {
-      // Switching Video -> Photo: simply mute audio tracks in 0ms without restarting camera!
       streamRef.current.getAudioTracks().forEach((t) => {
         t.enabled = false;
       });
     }
   };
 
-  // Flip front/rear lens cleanly preserving audio if in Video mode
   const handleFlipCamera = () => {
-    if (isRecordingVideo) return;
+    if (isRecordingVideo || isCameraLoading) return;
     const nextFacing = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(nextFacing);
-    startCamera(captureMode === 'video', nextFacing);
+    startCamera(nextFacing, captureMode === 'video' && micEnabled);
   };
 
   // Initialize camera when modal opens or when returning from Review -> Live view
   useEffect(() => {
     if (isOpen && !isInReview) {
-      if (!streamRef.current) {
-        startCamera(captureMode === 'video', facingMode);
+      const hasLiveVideo =
+        streamRef.current &&
+        streamRef.current.getVideoTracks().some((t) => t.readyState === 'live');
+      if (!hasLiveVideo) {
+        startCamera(facingMode, false);
       }
     } else if (!isOpen) {
       stopCamera();
@@ -433,6 +453,7 @@ export default function SelfieCameraModal({
       setCountdown(null);
       setIsSearchOpen(false);
       setVideoStatusToast(null);
+      setMicEnabled(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, isInReview]);
@@ -504,13 +525,12 @@ export default function SelfieCameraModal({
         .then(() => {
           setIsCameraReady(true);
           setIsCameraLoading(false);
-          setTransitionPosterUrl(null);
         })
         .catch(() => {});
     }
   });
 
-  // Resume playback automatically if mobile user returns from OS permission sheet / background
+  // Resume playback automatically if mobile user returns from background
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible' && videoRef.current && streamRef.current) {
@@ -544,6 +564,47 @@ export default function SelfieCameraModal({
     }
   }, [flashEnabled, facingMode]);
 
+  const grabVideoFrameDataUrl = useCallback((): string | null => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth || !video.videoHeight) return null;
+
+    const targetW = 1080;
+    const targetH = 1920;
+    const canvas = document.createElement('canvas');
+    canvas.width = targetW;
+    canvas.height = targetH;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const targetRatio = targetW / targetH;
+    const videoRatio = vw / vh;
+
+    let cropW = vw;
+    let cropH = vh;
+    if (videoRatio > targetRatio) {
+      cropW = vh * targetRatio;
+    } else {
+      cropH = vw / targetRatio;
+    }
+
+    cropW = cropW / zoomLevel;
+    cropH = cropH / zoomLevel;
+    const sx = (vw - cropW) / 2;
+    const sy = (vh - cropH) / 2;
+
+    ctx.save();
+    if (facingMode === 'user') {
+      ctx.translate(targetW, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(video, sx, sy, cropW, cropH, 0, 0, targetW, targetH);
+    ctx.restore();
+
+    return canvas.toDataURL('image/jpeg', 0.9);
+  }, [facingMode, zoomLevel]);
+
   const performSnapshot = useCallback(() => {
     const doCapture = () => {
       const rawData = grabVideoFrameDataUrl();
@@ -571,6 +632,10 @@ export default function SelfieCameraModal({
       clearInterval(videoTimerRef.current);
       videoTimerRef.current = null;
     }
+    // Capture cover frame right before stopping while live video is still streaming
+    if (!videoCoverSnapshotRef.current) {
+      videoCoverSnapshotRef.current = grabVideoFrameDataUrl();
+    }
     const recorder = mediaRecorderRef.current;
     if (recorder && recorder.state !== 'inactive') {
       try {
@@ -581,26 +646,25 @@ export default function SelfieCameraModal({
     } else {
       setIsRecordingVideo(false);
     }
-  }, []);
+  }, [grabVideoFrameDataUrl]);
 
   const stopVideoRecording = useCallback(() => {
     if (stopDelayTimeoutRef.current) return;
-    // Guarantee at least 750ms of encoded frames so iOS/Android muxers always write a valid MP4/WebM header
     const elapsedMs = Date.now() - recordStartTimeRef.current;
-    if (elapsedMs < 750) {
+    if (elapsedMs < 800) {
       stopDelayTimeoutRef.current = setTimeout(() => {
         stopDelayTimeoutRef.current = null;
         finalizeStopRecording();
-      }, 750 - elapsedMs);
+      }, 800 - elapsedMs);
       return;
     }
     finalizeStopRecording();
   }, [finalizeStopRecording]);
 
   /**
-   * Starts video recording immediately on the already-live stream (0 getUserMedia calls!).
-   * Uses non-fragmented `recorder.start()` (no timeslice) so iOS Safari AVAssetWriter & Android Chrome
-   * produce a complete, standards-compliant MP4/WebM file that plays and saves to Camera Roll cleanly.
+   * Starts video recording immediately on the already-running stream with ZERO getUserMedia calls.
+   * Uses strictly matched MIME codecs (video-only codecs when mic is off; video+audio codecs when mic is on)
+   * so neither Android Chrome (`opus` without audio track error) nor iOS Safari (`AVAssetWriter`) ever fails!
    */
   const startVideoRecording = useCallback(() => {
     if (!streamRef.current || isRecordingVideo) return;
@@ -614,35 +678,38 @@ export default function SelfieCameraModal({
       return;
     }
 
-    const videoTrack = streamRef.current.getVideoTracks()[0];
-    if (!videoTrack || videoTrack.readyState !== 'live') {
-      startCamera(true, facingMode);
+    const videoTracks = streamRef.current
+      .getVideoTracks()
+      .filter((t) => t.readyState === 'live');
+    if (videoTracks.length === 0) {
+      startCamera(facingMode, micEnabled);
       return;
     }
 
-    // Store cover frame in a ref ONLY (never set rawCapturedUrl unless user taps "Attach Cover")
-    videoCoverSnapshotRef.current = grabVideoFrameDataUrl();
+    const liveAudioTracks = micEnabled
+      ? streamRef.current
+          .getAudioTracks()
+          .filter((t) => t.readyState === 'live' && t.enabled)
+      : [];
+
+    const hasAudio = liveAudioTracks.length > 0;
+    // Pass streamRef.current directly when recording video-only so iOS WebKit never stalls on wrapper streams
+    const recordStream =
+      !hasAudio && streamRef.current.getAudioTracks().length === 0
+        ? streamRef.current
+        : new MediaStream([videoTracks[0], ...liveAudioTracks]);
+
+    videoCoverSnapshotRef.current = null;
     recordedChunksRef.current = [];
     setRecordingSeconds(0);
+    setRecordedHasAudio(hasAudio);
     setIsReviewMuted(true);
 
-    // Ensure audio tracks are enabled if available
-    const activeAudioTracks = streamRef.current
-      .getAudioTracks()
-      .filter((t) => t.readyState === 'live');
-    activeAudioTracks.forEach((t) => {
-      t.enabled = true;
-    });
-
-    const recordStream = new MediaStream([videoTrack, ...activeAudioTracks]);
-
-    // Standard container candidates (prefer MP4 for iOS Safari / Camera Roll compatibility)
-    const mimeCandidates = [
-      'video/mp4',
-      'video/webm;codecs=vp8,opus',
-      'video/webm;codecs=vp9,opus',
-      'video/webm',
-    ];
+    // CRITICAL: Match codec list strictly to whether `recordStream` actually contains an audio track!
+    // Passing `;codecs=vp8,opus` when `hasAudio === false` throws/fails on Android Chrome!
+    const mimeCandidates = hasAudio
+      ? ['video/mp4', 'video/webm;codecs=vp8,opus', 'video/webm']
+      : ['video/mp4', 'video/webm;codecs=vp8', 'video/webm'];
 
     const supportedMime =
       mimeCandidates.find((m) => {
@@ -656,13 +723,12 @@ export default function SelfieCameraModal({
     try {
       let recorder: MediaRecorder;
       try {
-        const opts: MediaRecorderOptions = { videoBitsPerSecond: 2_500_000 };
-        if (supportedMime) opts.mimeType = supportedMime;
-        recorder = new MediaRecorder(recordStream, opts);
-      } catch {
         recorder = supportedMime
           ? new MediaRecorder(recordStream, { mimeType: supportedMime })
           : new MediaRecorder(recordStream);
+      } catch {
+        // Ultimate native fallback with zero options
+        recorder = new MediaRecorder(recordStream);
       }
 
       recorder.ondataavailable = (ev) => {
@@ -680,7 +746,7 @@ export default function SelfieCameraModal({
         showToast(
           language === 'ms'
             ? 'Ralat rakaman video. Sila cuba lagi.'
-            : 'Video recording failed. Please try again.'
+            : 'Video recording error. Please try again.'
         );
       };
 
@@ -691,24 +757,23 @@ export default function SelfieCameraModal({
         }
         setIsRecordingVideo(false);
 
-        // Grab latest frame right before stopping camera if cover wasn't captured earlier
-        if (!videoCoverSnapshotRef.current) {
-          videoCoverSnapshotRef.current = grabVideoFrameDataUrl();
-        }
-
         const rawMime = (recorder.mimeType || supportedMime || 'video/mp4').toLowerCase();
-        // Strip `;codecs=...` so iOS Safari & Android `navigator.canShare({ files })` accepts the File!
         const cleanMime = rawMime.includes('mp4') ? 'video/mp4' : 'video/webm';
         const ext = cleanMime === 'video/mp4' ? 'mp4' : 'webm';
 
         const blob = new Blob(recordedChunksRef.current, { type: cleanMime });
         if (blob.size < 512) {
+          // Keep live camera running cleanly if recording was empty!
           showToast(
             language === 'ms'
-              ? 'Video terlalu pendek. Tekan rakam sekurang-kurangnya 1 saat.'
-              : 'Clip too short. Hold or record for at least 1 second.'
+              ? 'Rakaman terlalu pendek. Sila rakam sekurang-kurangnya 1 saat.'
+              : 'Clip too short. Please record for at least 1 second.'
           );
           return;
+        }
+
+        if (!videoCoverSnapshotRef.current) {
+          videoCoverSnapshotRef.current = grabVideoFrameDataUrl();
         }
 
         const safeCouple = meta.fullCoupleName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -726,8 +791,15 @@ export default function SelfieCameraModal({
 
       mediaRecorderRef.current = recorder;
       recordStartTimeRef.current = Date.now();
-      // Start WITHOUT timeslice so WebKit/Chrome muxes a single non-fragmented MP4/WebM container!
-      recorder.start();
+
+      // iOS Safari AVAssetWriter writes non-fragmented Camera-Roll-ready MP4s when started without timeslice;
+      // Android Chrome / Desktop streams smoothly with 500ms chunks.
+      if (isIOSDevice()) {
+        recorder.start();
+      } else {
+        recorder.start(500);
+      }
+
       setIsRecordingVideo(true);
 
       let elapsed = 0;
@@ -742,8 +814,8 @@ export default function SelfieCameraModal({
       setIsRecordingVideo(false);
       showToast(
         language === 'ms'
-          ? 'Rakaman video tidak dapat dimulakan pada peranti ini.'
-          : 'Could not start video recording on this device.'
+          ? 'Rakaman video tidak disokong pada pelayar ini.'
+          : 'Could not start video recording in this browser.'
       );
     }
   }, [
@@ -753,6 +825,7 @@ export default function SelfieCameraModal({
     isRecordingVideo,
     language,
     meta.fullCoupleName,
+    micEnabled,
     showToast,
     startCamera,
     stopCamera,
@@ -767,7 +840,7 @@ export default function SelfieCameraModal({
     }
 
     if (!isCameraReady) {
-      startCamera(captureMode === 'video', facingMode);
+      startCamera(facingMode, captureMode === 'video' && micEnabled);
       return;
     }
 
@@ -803,10 +876,11 @@ export default function SelfieCameraModal({
     videoCoverSnapshotRef.current = null;
     setRawCapturedUrl(null);
     setRecordingSeconds(0);
-    setIsReviewMuted(false);
+    setIsReviewMuted(true);
   };
 
   const toggleReviewAudio = () => {
+    if (!recordedHasAudio) return;
     const nextMuted = !isReviewMuted;
     setIsReviewMuted(nextMuted);
     if (reviewVideoRef.current) {
@@ -818,15 +892,22 @@ export default function SelfieCameraModal({
   const handleGalleryPick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result as string;
-      if (result) {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
         stopCamera();
-        setRawCapturedUrl(result);
+        setRawCapturedUrl(canvas.toDataURL('image/jpeg', 0.9));
       }
+      URL.revokeObjectURL(objectUrl);
     };
-    reader.readAsDataURL(file);
+    img.onerror = () => URL.revokeObjectURL(objectUrl);
+    img.src = objectUrl;
   };
 
   const handleConfirmSelfie = async () => {
@@ -846,21 +927,15 @@ export default function SelfieCameraModal({
   };
 
   /**
-   * Saves recorded video (or photo) to user's phone / computer.
-   * Crucially executes `navigator.share({ files })` SYNCHRONOUSLY inside the user tap gesture
-   * (zero preceding `await`s!) with a clean `'video/mp4'` / `'video/webm'` File so iOS Safari
-   * & Android Chrome open the native "Save Video" sheet every single time!
+   * Synchronous mobile-first video save handler:
+   * Invokes `navigator.share({ files })` on line 1 (no preceding `await`) so iOS Safari
+   * opens the native "Save Video" sheet and Android opens Share/Save immediately.
    */
   const handleSaveVideoSync = () => {
     if (!recordedVideoFile || !recordedVideoUrl) return;
 
-    const isMobileDevice =
-      typeof navigator !== 'undefined' &&
-      (/iPad|iPhone|iPod|Android/i.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-
     if (
-      isMobileDevice &&
+      isMobileDevice() &&
       typeof navigator.share === 'function' &&
       (!navigator.canShare || navigator.canShare({ files: [recordedVideoFile] }))
     ) {
@@ -868,14 +943,12 @@ export default function SelfieCameraModal({
         .share({
           files: [recordedVideoFile],
           title: recordedVideoFile.name,
-          text: `${meta.fullCoupleName} Celebration Video`,
         })
         .then(() => {
-          showToast(language === 'ms' ? 'Video sedia disimpan!' : 'Video shared / saved!');
+          showToast(language === 'ms' ? 'Video disimpan!' : 'Video saved!');
         })
         .catch((err) => {
           if (err instanceof Error && err.name === 'AbortError') return;
-          // Fallback to anchor download if share was rejected
           const a = document.createElement('a');
           a.href = recordedVideoUrl;
           a.download = recordedVideoFile.name;
@@ -889,7 +962,6 @@ export default function SelfieCameraModal({
       return;
     }
 
-    // Desktop & standard browsers: direct file download
     const a = document.createElement('a');
     a.href = recordedVideoUrl;
     a.download = recordedVideoFile.name;
@@ -982,7 +1054,7 @@ export default function SelfieCameraModal({
         {/* Status Toast Notification */}
         {videoStatusToast && (
           <div className="absolute top-16 inset-x-6 z-50 flex justify-center pointer-events-none animate-fade-down">
-            <div className="px-4 py-2 rounded-full bg-black/80 border border-white/20 text-white text-xs font-medium backdrop-blur-md shadow-xl">
+            <div className="px-4 py-2 rounded-full bg-black/80 border border-white/20 text-white text-xs font-medium backdrop-blur-md shadow-xl text-center">
               {videoStatusToast}
             </div>
           </div>
@@ -1025,7 +1097,7 @@ export default function SelfieCameraModal({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {recordedVideoUrl && (
+            {recordedVideoUrl && recordedHasAudio && (
               <button
                 type="button"
                 onClick={toggleReviewAudio}
@@ -1043,7 +1115,7 @@ export default function SelfieCameraModal({
 
             {!isInReview && !isRecordingVideo && (
               <>
-                {captureMode === 'photo' && (
+                {captureMode === 'photo' ? (
                   <button
                     type="button"
                     onClick={() => setTimerEnabled((prev) => !prev)}
@@ -1056,6 +1128,20 @@ export default function SelfieCameraModal({
                     title={timerEnabled ? '3s Timer On' : '3s Timer Off'}
                   >
                     <Timer className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleToggleMic}
+                    aria-label={micEnabled ? 'Mute microphone' : 'Enable microphone'}
+                    className={`w-9 h-9 rounded-full border flex items-center justify-center backdrop-blur-md transition active:scale-90 ${
+                      micEnabled
+                        ? 'bg-rose-500 text-white border-rose-400'
+                        : 'bg-black/45 hover:bg-black/70 border-white/15 text-white/80'
+                    }`}
+                    title={micEnabled ? 'Mic On' : 'Mic Off (Tap to enable voice)'}
+                  >
+                    {micEnabled ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
                   </button>
                 )}
 
@@ -1107,7 +1193,7 @@ export default function SelfieCameraModal({
               e.currentTarget.play().catch(() => {});
             }}
             onClick={toggleReviewAudio}
-            className="absolute inset-0 w-full h-full object-cover cursor-pointer"
+            className="absolute inset-0 w-full h-full object-cover"
             style={{
               transform: facingMode === 'user' ? 'scaleX(-1) translateZ(0)' : 'translateZ(0)',
               filter: activeVideoFilterStyle,
@@ -1123,23 +1209,12 @@ export default function SelfieCameraModal({
           />
         ) : (
           <>
-            {/* Seamless freeze-frame poster shown briefly during Photo <-> Video or Front <-> Rear switch */}
-            {transitionPosterUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={transitionPosterUrl}
-                alt=""
-                aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover blur-[2px] scale-[1.01] z-[1]"
-              />
-            )}
-
             <video
               ref={videoRef}
               playsInline
               muted
               autoPlay
-              className="absolute inset-0 w-full h-full object-cover transition-transform duration-200 will-change-transform"
+              className="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
               style={{
                 transform: `${
                   facingMode === 'user' ? 'scaleX(-1)' : 'scaleX(1)'
@@ -1149,7 +1224,7 @@ export default function SelfieCameraModal({
             />
 
             {/* Loading / Camera Permission Fallback */}
-            {((isCameraLoading && !transitionPosterUrl) || cameraError) && (
+            {(isCameraLoading || cameraError) && (
               <div className="relative z-20 px-6 text-center flex flex-col items-center gap-3 max-w-xs">
                 {isCameraLoading ? (
                   <>
@@ -1167,7 +1242,7 @@ export default function SelfieCameraModal({
                     <div className="flex items-center gap-2 mt-1">
                       <button
                         type="button"
-                        onClick={() => startCamera(captureMode === 'video', facingMode)}
+                        onClick={() => startCamera(facingMode, false)}
                         className="px-4 py-2 rounded-full bg-white text-black text-xs font-bold hover:bg-white/90 transition"
                       >
                         {language === 'ms' ? 'Cuba Lagi' : 'Enable Camera'}
