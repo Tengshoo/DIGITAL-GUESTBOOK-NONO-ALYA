@@ -316,6 +316,51 @@ export default function SelfieCameraModal({
     };
   }, [isOpen, isInReview, startCamera, stopCamera]);
 
+  // Lock page & viewport scrolling completely while Selfie Camera is open (iOS Safari, Android, Desktop)
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevHtmlOverscroll = html.style.overscrollBehavior;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyOverscroll = body.style.overscrollBehavior;
+    const scrollY = window.scrollY;
+
+    html.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overflow = 'hidden';
+    body.style.overscrollBehavior = 'none';
+
+    const preventScrollOutsideScrollables = (e: TouchEvent | WheelEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[data-selfie-scrollable="true"]')) {
+        return;
+      }
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener('touchmove', preventScrollOutsideScrollables, {
+      passive: false,
+    });
+    document.addEventListener('wheel', preventScrollOutsideScrollables, {
+      passive: false,
+    });
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      html.style.overscrollBehavior = prevHtmlOverscroll;
+      body.style.overflow = prevBodyOverflow;
+      body.style.overscrollBehavior = prevBodyOverscroll;
+      document.removeEventListener('touchmove', preventScrollOutsideScrollables);
+      document.removeEventListener('wheel', preventScrollOutsideScrollables);
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
+
   // Clean up on component unmount
   useEffect(() => {
     return () => {
@@ -773,7 +818,7 @@ export default function SelfieCameraModal({
     currentFilterObj.id === 'original' ? undefined : currentFilterObj.cssFilter;
 
   return (
-    <div className="fixed inset-0 z-[70] bg-black flex flex-col items-center justify-center select-none animate-fade-in">
+    <div className="fixed inset-0 z-[70] w-full h-[100dvh] max-h-[100dvh] overflow-hidden overscroll-none touch-none bg-black flex flex-col items-center justify-between sm:justify-center pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] sm:py-3 select-none animate-fade-in">
       {/* Hidden Gallery Picker */}
       <input
         ref={galleryInputRef}
@@ -786,11 +831,11 @@ export default function SelfieCameraModal({
         className="hidden"
       />
 
-      {/* Main 9:16 Portrait Camera / Review Card */}
+      {/* Main 9:16 Portrait Camera / Review Card — strictly sized within 100dvh */}
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative w-full max-w-[400px] sm:max-w-[385px] aspect-[9/16] max-h-[calc(100dvh-74px)] sm:rounded-[28px] overflow-hidden bg-[#080808] sm:border sm:border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.95)] flex items-center justify-center"
+        className="relative flex-1 min-h-0 w-full max-w-[430px] sm:max-w-[385px] sm:flex-initial sm:aspect-[9/16] sm:h-[calc(100dvh-80px)] sm:w-auto sm:rounded-[28px] overflow-hidden bg-[#080808] sm:border sm:border-white/15 shadow-[0_20px_70px_rgba(0,0,0,0.95)] flex items-center justify-center"
       >
         {/* Screen Illumination Flash Overlay */}
         {isScreenFlashing && (
@@ -1078,7 +1123,10 @@ export default function SelfieCameraModal({
           </div>
         ) : (
           /* In Review Mode: Frame Quick-Switch Strip at Bottom of Card */
-          <div className="absolute inset-x-3 bottom-3 z-30 flex items-center gap-1.5 overflow-x-auto py-1 px-1">
+          <div
+            data-selfie-scrollable="true"
+            className="absolute inset-x-3 bottom-3 z-30 flex items-center gap-1.5 overflow-x-auto touch-pan-x overscroll-contain py-1 px-1"
+          >
             {SELFIE_FRAMES.map((frame) => {
               const active = selectedFrame === frame.id;
               return (
@@ -1158,7 +1206,10 @@ export default function SelfieCameraModal({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto grid grid-cols-2 gap-2 pr-0.5">
+            <div
+              data-selfie-scrollable="true"
+              className="flex-1 min-h-0 overflow-y-auto touch-pan-y overscroll-contain grid grid-cols-2 gap-2 pr-0.5"
+            >
               {filteredFrames.map((frame) => {
                 const active = selectedFrame === frame.id;
                 return (
@@ -1199,7 +1250,7 @@ export default function SelfieCameraModal({
       </div>
 
       {/* Bottom Pill Bar Below the 9:16 Card (Matches Kisandah: [ 1x ] [ ● Video · 30s | Photo ]) */}
-      <div className="w-full max-w-[400px] sm:max-w-[385px] px-4 pt-3 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] flex items-center justify-center gap-2.5">
+      <div className="shrink-0 w-full max-w-[430px] sm:max-w-[385px] px-4 py-2.5 sm:pt-3 sm:pb-0 flex items-center justify-center gap-2.5">
         {!isInReview ? (
           <>
             {/* Zoom Step Pill (1x -> 1.5x -> 2x) */}
