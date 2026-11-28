@@ -3,7 +3,7 @@
 import React from 'react';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 import { PHOTO_FILTERS } from '@/components/PhotoFilterSelector';
-import { resolveFontFamily } from '@/lib/assets';
+import { resolveFontFamily, encodeCanvasToOptimizedDataUrl } from '@/lib/assets';
 
 export type SelfieFrameId =
   | 'none'
@@ -510,16 +510,21 @@ export async function renderSelfieWithFrameToCanvas(
     img.crossOrigin = 'anonymous';
 
     img.onload = () => {
+      // Logical design canvas is 1080x1920; output scaled cleanly to 900x1600 HD 9:16
+      // (~55% smaller payload for 300-upload bursts while staying razor-sharp on phones & projectors)
       const W = 1080;
       const H = 1920;
+      const OUT_W = 900;
+      const OUT_H = 1600;
       const canvas = document.createElement('canvas');
-      canvas.width = W;
-      canvas.height = H;
+      canvas.width = OUT_W;
+      canvas.height = OUT_H;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         resolve(rawDataUrl);
         return;
       }
+      ctx.scale(OUT_W / W, OUT_H / H);
 
       const meta = getSelfieEventMeta();
       const filterObj = PHOTO_FILTERS.find((f) => f.id === filterId);
@@ -553,7 +558,7 @@ export async function renderSelfieWithFrameToCanvas(
       ctx.restore();
 
       if (frameId === 'none') {
-        resolve(canvas.toDataURL('image/jpeg', 0.9));
+        resolve(encodeCanvasToOptimizedDataUrl(canvas, 0.82));
         return;
       }
 
@@ -824,7 +829,7 @@ export async function renderSelfieWithFrameToCanvas(
         ctx.restore();
       }
 
-      resolve(canvas.toDataURL('image/jpeg', 0.9));
+      resolve(encodeCanvasToOptimizedDataUrl(canvas, 0.82));
     };
 
     img.onerror = () => resolve(rawDataUrl);

@@ -32,8 +32,11 @@ import {
   isPhotoUploadAllowed,
   MAX_PHOTOS_PER_WISH,
 } from '@/lib/supabase';
-import { uploadPhotosToGoogleDrive } from '@/lib/googleDrive';
-import { getAssetPath } from '@/lib/assets';
+import {
+  uploadPhotosToGoogleDrive,
+  subscribeToDriveUploadStatus,
+} from '@/lib/googleDrive';
+import { getAssetPath, encodeCanvasToOptimizedDataUrl } from '@/lib/assets';
 import { useLanguage, LanguageToggle } from '@/lib/i18n';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 
@@ -73,6 +76,11 @@ export default function GuestbookPage() {
   const [selectedFrame, setSelectedFrame] = useState<PhotoFrameConfig['id']>('none');
   const [voiceBase64, setVoiceBase64] = useState<string | null>(null);
   const [submitProgressText, setSubmitProgressText] = useState<string | null>(null);
+  const [pendingDriveCount, setPendingDriveCount] = useState<number>(0);
+
+  useEffect(() => {
+    return subscribeToDriveUploadStatus(setPendingDriveCount);
+  }, []);
 
   const activeRawPhoto = rawPhotos[activePhotoIndex] || rawPhotos[0] || null;
 
@@ -222,8 +230,8 @@ export default function GuestbookPage() {
       img.onload = () => {
         try {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1080;
-          const MAX_HEIGHT = 1080;
+          const MAX_WIDTH = 960;
+          const MAX_HEIGHT = 960;
           let width = img.width;
           let height = img.height;
 
@@ -242,7 +250,7 @@ export default function GuestbookPage() {
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.82));
+            resolve(encodeCanvasToOptimizedDataUrl(canvas, 0.8));
           } else {
             reject(new Error(t.errorInvalidImage));
           }
@@ -688,9 +696,20 @@ export default function GuestbookPage() {
                 <p className="font-serif italic text-base text-champagne-800 mb-2">
                   {t.thankYouSubtitle}
                 </p>
-                <p className="text-xs text-warm-600 max-w-sm mx-auto mb-6">
+                <p className="text-xs text-warm-600 max-w-sm mx-auto mb-5">
                   {t.thankYouLiveWallNote}
                 </p>
+
+                {pendingDriveCount > 0 && (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-5 rounded-full bg-champagne-100/80 border border-champagne-300 text-[11px] text-champagne-900 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-champagne-600 animate-ping" />
+                    <span>
+                      {language === 'ms'
+                        ? `Menyimpan salinan foto resolusi tinggi... (${pendingDriveCount})`
+                        : `Backing up high-res photos... (${pendingDriveCount})`}
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
                   <button

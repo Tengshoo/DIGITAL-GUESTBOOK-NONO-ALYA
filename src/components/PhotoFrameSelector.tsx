@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Frame, Check, Sparkles, Heart, CircleOff, Star } from 'lucide-react';
+import { encodeCanvasToOptimizedDataUrl } from '@/lib/assets';
 
 export interface PhotoFrameConfig {
   id: 'none' | 'polaroid' | 'champagne-gold' | 'cute-hearts' | 'blush-romance';
@@ -135,7 +136,7 @@ export async function applyFilterAndFrameToCanvas(
           // ignore
         }
         ctx.drawImage(img, 0, 0, srcW, srcH);
-        resolve(canvas.toDataURL('image/jpeg', 0.88));
+        resolve(encodeCanvasToOptimizedDataUrl(canvas, 0.82));
         return;
       }
 
@@ -268,7 +269,7 @@ export async function applyFilterAndFrameToCanvas(
         ctx.restore();
       }
 
-      resolve(canvas.toDataURL('image/jpeg', 0.88));
+      resolve(encodeCanvasToOptimizedDataUrl(canvas, 0.82));
     };
 
     img.onerror = () => {

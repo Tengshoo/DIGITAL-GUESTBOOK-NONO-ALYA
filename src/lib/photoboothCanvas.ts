@@ -1,7 +1,7 @@
 import { PHOTOBOOTH_STRIP_THEMES, PhotoboothStripTheme, StripSlot } from '@/components/Photobooth/stripThemes';
 import { PHOTO_FILTERS, PhotoFilter } from '@/components/PhotoFilterSelector';
 import { EVENT_CONFIG } from '@/config/eventConfig';
-import { getAssetPath, resolveFontFamily } from '@/lib/assets';
+import { getAssetPath, resolveFontFamily, encodeCanvasToOptimizedDataUrl } from '@/lib/assets';
 
 export interface EventInfo {
   welcomeTitle: string;
@@ -250,7 +250,7 @@ export async function generatePhotoboothStripCanvas(
     }
   }
 
-  return canvas.toDataURL('image/jpeg', 0.94);
+  return encodeCanvasToOptimizedDataUrl(canvas, 0.86);
 }
 
 /**

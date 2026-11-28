@@ -63,3 +63,22 @@ export function resolveFontFamily(fontStack: string, forCanvas = false): string 
   }
   return resolved;
 }
+
+/**
+ * Encodes an HTML5 Canvas to compact WebP when supported by the browser (~35% smaller than JPEG),
+ * with automatic fallback to JPEG on browsers (like older Safari) that return PNG for WebP.
+ */
+export function encodeCanvasToOptimizedDataUrl(
+  canvas: HTMLCanvasElement,
+  quality = 0.82
+): string {
+  try {
+    const webp = canvas.toDataURL('image/webp', quality);
+    if (webp.startsWith('data:image/webp;base64,')) {
+      return webp;
+    }
+  } catch {
+    // Fallback to JPEG
+  }
+  return canvas.toDataURL('image/jpeg', quality);
+}

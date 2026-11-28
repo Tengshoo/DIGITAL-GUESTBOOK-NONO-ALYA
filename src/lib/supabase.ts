@@ -14,6 +14,13 @@ export interface SupabaseGuestEntry {
 }
 
 export const MAX_PHOTOS_PER_WISH = 10;
+export const LIVE_WALL_PAGE_SIZE = 24;
+
+let lastKnownTotalApprovedCount = 0;
+
+export function getApprovedTotalCount(): number {
+  return lastKnownTotalApprovedCount;
+}
 
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -365,28 +372,49 @@ export async function submitGuestbookEntry(entry: {
   const supabase = getSupabase();
 
   if (supabase) {
-    try {
-      const { error } = await supabase.from('entries').insert([
-        {
-          event_id: currentEventId,
-          name: cleanName,
-          message: cleanMessage,
-          photo_url: serializedPhotoUrl,
-          audio_url: validatedAudioUrl,
-          is_approved: 1,
-        },
-      ]);
-      if (error) {
-        console.error('Supabase insert error:', error);
-        return { success: false, error: error.message };
+    const payload = {
+      event_id: currentEventId,
+      name: cleanName,
+      message: cleanMessage,
+      photo_url: serializedPhotoUrl,
+      audio_url: validatedAudioUrl,
+      is_approved: 1,
+    };
+
+    const MAX_ATTEMPTS = 3;
+    let lastErrorMsg = 'Gagal menghantar ucapan. Sila cuba lagi.';
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      if (attempt > 0) {
+        const backoffMs = attempt * 950 + Math.floor(Math.random() * 850);
+        await new Promise((r) => setTimeout(r, backoffMs));
       }
-      lastSubmissionTimestamp = Date.now();
-      cachedPhotoCount = null;
-      return { success: true };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unknown error';
-      return { success: false, error: msg };
+
+      try {
+        const { error } = await supabase.from('entries').insert([payload]);
+        if (!error) {
+          lastSubmissionTimestamp = Date.now();
+          cachedPhotoCount = null;
+          return { success: true };
+        }
+
+        lastErrorMsg = error.message || lastErrorMsg;
+        // Do not retry deterministic constraint / anti-spam / limit errors
+        const nonRetryable =
+          error.code === '23514' ||
+          error.code === 'P0001' ||
+          /sama baru sahaja|had muat naik|check constraint/i.test(lastErrorMsg);
+        if (nonRetryable) {
+          return { success: false, error: lastErrorMsg };
+        }
+        console.warn(`Supabase insert attempt ${attempt + 1} failed:`, error);
+      } catch (err: unknown) {
+        lastErrorMsg = err instanceof Error ? err.message : 'Network error';
+        console.warn(`Supabase insert network attempt ${attempt + 1} failed:`, lastErrorMsg);
+      }
     }
+
+    return { success: false, error: lastErrorMsg };
   }
 
   // Fallback: LocalStorage when testing without Supabase credentials
@@ -406,16 +434,19 @@ export async function submitGuestbookEntry(entry: {
 }
 
 /**
- * Fetch all approved entries for the Live Wall
- * Uses incremental caching by ID so 5-second Live Wall polls only download newly added entries,
- * saving >98% of Supabase bandwidth when multi-photo wishes are present!
+ * Fetch approved entries for the Live Wall with paginated hydration + incremental ID caching.
+ * By default hydrates only the newest `limit` entries (24) so 150 concurrent viewers never
+ * exhaust Supabase's 5 GB Free Tier egress even when 300+ photos have been uploaded!
  */
-export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
+export async function getApprovedEntries(options?: {
+  limit?: number;
+}): Promise<SupabaseGuestEntry[]> {
+  const limit = options?.limit ?? LIVE_WALL_PAGE_SIZE;
   const supabase = getSupabase();
 
   if (supabase) {
     try {
-      // 1. Lightweight query: only fetch IDs and timestamps of currently approved entries (<1 KB)
+      // 1. Lightweight query: only fetch IDs and timestamps of currently approved entries (<2 KB)
       let metaQuery = supabase
         .from('entries')
         .select('id, is_approved, created_at')
@@ -431,26 +462,34 @@ export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
 
       if (metaError || !metaRows) {
         console.error('Supabase meta fetch error:', metaError);
-        return getLocalEntries().filter((e) => e.is_approved === 1);
+        const fallback = getLocalEntries().filter((e) => e.is_approved === 1);
+        lastKnownTotalApprovedCount = fallback.length;
+        return limit > 0 ? fallback.slice(0, limit) : fallback;
       }
 
-      const approvedIds = metaRows.map((r) => r.id as number);
-      const missingIds = approvedIds.filter((id) => !approvedEntriesCache.has(id));
+      const allApprovedIds = metaRows.map((r) => r.id as number);
+      lastKnownTotalApprovedCount = allApprovedIds.length;
 
       // Prune any cached entries that were hidden or deleted by admin
-      const approvedIdSet = new Set(approvedIds);
+      const approvedIdSet = new Set(allApprovedIds);
       Array.from(approvedEntriesCache.keys()).forEach((cachedId) => {
         if (!approvedIdSet.has(cachedId)) {
           approvedEntriesCache.delete(cachedId);
         }
       });
 
-      // 2. Fetch full payload (including multi-photo Base64 & audio) ONLY for newly added IDs
-      if (missingIds.length > 0) {
+      // Slice to requested pagination window (e.g. newest 24, 48, 72...)
+      const targetIds = limit > 0 ? allApprovedIds.slice(0, limit) : allApprovedIds;
+      const missingIds = targetIds.filter((id) => !approvedEntriesCache.has(id));
+
+      // 2. Fetch full payload ONLY for uncached IDs within the active pagination window, in safe chunks of 12
+      const CHUNK_SIZE = 12;
+      for (let i = 0; i < missingIds.length; i += CHUNK_SIZE) {
+        const chunkIds = missingIds.slice(i, i + CHUNK_SIZE);
         const { data: newEntries, error: fullError } = await supabase
           .from('entries')
           .select('*')
-          .in('id', missingIds);
+          .in('id', chunkIds);
 
         if (!fullError && newEntries) {
           const sanitized = sanitizeEntries(newEntries as SupabaseGuestEntry[]);
@@ -460,17 +499,21 @@ export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
         }
       }
 
-      // 3. Return entries in exact created_at DESC order
-      return approvedIds
+      // 3. Return hydrated entries in exact created_at DESC order
+      return targetIds
         .map((id) => approvedEntriesCache.get(id))
         .filter((e): e is SupabaseGuestEntry => Boolean(e));
     } catch (err) {
       console.error('Supabase query error:', err);
-      return getLocalEntries().filter((e) => e.is_approved === 1);
+      const fallback = getLocalEntries().filter((e) => e.is_approved === 1);
+      lastKnownTotalApprovedCount = fallback.length;
+      return limit > 0 ? fallback.slice(0, limit) : fallback;
     }
   }
 
-  return getLocalEntries().filter((e) => e.is_approved === 1);
+  const localApproved = getLocalEntries().filter((e) => e.is_approved === 1);
+  lastKnownTotalApprovedCount = localApproved.length;
+  return limit > 0 ? localApproved.slice(0, limit) : localApproved;
 }
 
 /**

@@ -20,7 +20,13 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import AudioPlayer from '@/components/AudioPlayer';
-import { getApprovedEntries, getSupabase, parsePhotoUrls } from '@/lib/supabase';
+import {
+  getApprovedEntries,
+  getApprovedTotalCount,
+  getSupabase,
+  parsePhotoUrls,
+  LIVE_WALL_PAGE_SIZE,
+} from '@/lib/supabase';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 import { getAssetPath } from '@/lib/assets';
 import { generateQrCodeDataUrl } from '@/lib/qrcode';
@@ -55,6 +61,10 @@ function areEntriesUnchanged(prev: GuestEntry[], next: GuestEntry[]): boolean {
 
 export default function WallModePage() {
   const [entries, setEntries] = useState<GuestEntry[]>([]);
+  const [totalMemoriesCount, setTotalMemoriesCount] = useState<number>(0);
+  const [visibleLimit, setVisibleLimit] = useState<number>(LIVE_WALL_PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activePhotoSubIndex, setActivePhotoSubIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -64,12 +74,19 @@ export default function WallModePage() {
   const [qrOrigin, setQrOrigin] = useState('');
 
   const CYCLE_INTERVAL = 7000; // 7 seconds per slide
-  const POLL_INTERVAL = 6000; // 6 seconds lightweight metadata check
 
   // Track remaining duration accurately across pause/resume without 100ms React state re-renders
   const slideStartRef = useRef<number>(Date.now());
   const remainingMsRef = useRef<number>(CYCLE_INTERVAL);
   const slideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const visibleLimitRef = useRef<number>(LIVE_WALL_PAGE_SIZE);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightFetchRef = useRef<boolean>(false);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    visibleLimitRef.current = visibleLimit;
+  }, [visibleLimit]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -83,49 +100,140 @@ export default function WallModePage() {
     [qrOrigin]
   );
 
-  // Fetch approved entries from Supabase / Local data
-  const fetchEntries = useCallback(async () => {
+  /**
+   * Concurrency-guarded paginated fetch.
+   * Prevents overlapping in-flight queries and hydrates only `visibleLimitRef.current` rows
+   * while displaying the full event memory count in the header!
+   */
+  const fetchEntries = useCallback(async (overrideLimit?: number) => {
+    if (inFlightFetchRef.current && overrideLimit === undefined) return;
+    inFlightFetchRef.current = true;
     try {
-      const data = await getApprovedEntries();
+      const limitToFetch = overrideLimit ?? visibleLimitRef.current;
+      const data = await getApprovedEntries({ limit: limitToFetch });
+      const total = getApprovedTotalCount();
+      setTotalMemoriesCount(total || data.length);
       if (Array.isArray(data)) {
         setEntries((prev) => (areEntriesUnchanged(prev, data) ? prev : data));
       }
     } catch (err) {
       console.error('Error polling live entries:', err);
+    } finally {
+      inFlightFetchRef.current = false;
     }
   }, []);
 
-  // Realtime subscription if Supabase is active
+  /**
+   * Coalesces bursts of 50-300 simultaneous Realtime INSERT events into a single jittered fetch
+   * (~3.2-4.8s window), eliminating thundering-herd CPU spikes on Supabase Free Tier!
+   */
+  const scheduleCoalescedFetch = useCallback(() => {
+    if (realtimeDebounceRef.current) return;
+    const jitteredDelay = 3200 + Math.floor(Math.random() * 1600);
+    realtimeDebounceRef.current = setTimeout(() => {
+      realtimeDebounceRef.current = null;
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        fetchEntries();
+      }
+    }, jitteredDelay);
+  }, [fetchEntries]);
+
+  /**
+   * Smart WebSocket Conservation:
+   * Only open a persistent Supabase Realtime WebSocket on larger tablet/laptop/projector screens (>= 768px)
+   * or when Fullscreen Spotlight is active, so 150 mobile phones browsing Gallery Grid never hit
+   * Supabase Free Tier's 200-WebSocket ceiling!
+   */
   useEffect(() => {
     const supabase = getSupabase();
-    if (!supabase) return;
+    if (!supabase || typeof window === 'undefined') return;
+
+    const isProjectorOrDesktop = window.innerWidth >= 768 || isFullscreen;
+    if (!isProjectorOrDesktop) return;
 
     const channel = supabase
-      .channel('entries_realtime_wall')
+      .channel(`entries_wall_${EVENT_CONFIG.supabase?.eventId || 'default'}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'entries' },
         () => {
-          fetchEntries();
+          scheduleCoalescedFetch();
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+        realtimeDebounceRef.current = null;
+      }
       supabase.removeChannel(channel);
+    };
+  }, [isFullscreen, scheduleCoalescedFetch]);
+
+  /**
+   * Jittered adaptive polling fallback:
+   * Desktop/projector polls gently every 8-11s; mobile guests poll every 10-14s with random jitter
+   * so 150 concurrent visitors never query at the exact same millisecond.
+   */
+  useEffect(() => {
+    fetchEntries();
+
+    let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNextPoll = () => {
+      if (cancelled) return;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const baseMs = isMobile ? 10000 : 8000;
+      const jitterMs = Math.floor(Math.random() * 3800);
+
+      timerId = setTimeout(async () => {
+        if (!cancelled && (typeof document === 'undefined' || document.visibilityState === 'visible')) {
+          await fetchEntries();
+        }
+        scheduleNextPoll();
+      }, baseMs + jitterMs);
+    };
+
+    scheduleNextPoll();
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
     };
   }, [fetchEntries]);
 
-  // Initial load and polling fallback
+  // Load next page of 24 memories on demand when scrolling Gallery Grid
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || entries.length >= totalMemoriesCount) return;
+    setIsLoadingMore(true);
+    const nextLimit = visibleLimitRef.current + LIVE_WALL_PAGE_SIZE;
+    setVisibleLimit(nextLimit);
+    visibleLimitRef.current = nextLimit;
+    try {
+      await fetchEntries(nextLimit);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [entries.length, fetchEntries, isLoadingMore, totalMemoriesCount]);
+
+  // Automatic IntersectionObserver on Gallery Grid bottom sentinel for seamless infinite scroll
   useEffect(() => {
-    fetchEntries();
-    const pollId = setInterval(() => {
-      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-        fetchEntries();
-      }
-    }, POLL_INTERVAL);
-    return () => clearInterval(pollId);
-  }, [fetchEntries]);
+    if (!isGridView || entries.length >= totalMemoriesCount) return;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (obsEntries) => {
+        if (obsEntries[0]?.isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      { rootMargin: '240px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isGridView, entries.length, totalMemoriesCount, handleLoadMore]);
 
   const goToNext = useCallback(() => {
     if (entries.length <= 1) return;
@@ -139,7 +247,6 @@ export default function WallModePage() {
     setActivePhotoSubIndex(0);
   }, [entries.length]);
 
-  // Keep currentIndex in bounds if entries shrink after moderation
   useEffect(() => {
     if (entries.length > 0 && currentIndex >= entries.length) {
       setCurrentIndex(0);
@@ -157,7 +264,6 @@ export default function WallModePage() {
       ? Math.min(20000, activeEntryPhotos.length * 2500)
       : CYCLE_INTERVAL;
 
-  // Reset remaining time whenever slide changes
   useEffect(() => {
     setActivePhotoSubIndex(0);
     remainingMsRef.current = currentSlideDuration;
@@ -269,6 +375,7 @@ export default function WallModePage() {
   };
 
   const bgImage = getAssetPath(EVENT_CONFIG.images.background);
+  const displayedTotal = Math.max(totalMemoriesCount, entries.length);
 
   return (
     <div
@@ -320,7 +427,7 @@ export default function WallModePage() {
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
             </h1>
             <p className="text-xs text-warm-300/80 font-sans tracking-wider uppercase">
-              Live Event Guestbook • {entries.length} Memories Shared
+              Live Event Guestbook • {displayedTotal} Memories Shared
             </p>
           </div>
         </div>
@@ -385,58 +492,76 @@ export default function WallModePage() {
             </button>
           </div>
         ) : isGridView ? (
-          /* Event Gallery Grid Mode with CSS content-visibility virtualization */
-          <div className="w-full max-h-[78vh] overflow-y-auto touch-scroll pr-1 sm:pr-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
-            {entries.map((entry) => {
-              const entryPhotos = parsePhotoUrls(entry.photo_url);
-              return (
-                <div
-                  key={entry.id}
-                  className="content-auto bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform duration-200 hover:scale-[1.02]"
-                >
-                  <div>
-                    {entryPhotos.length > 0 && (
-                      <div className="relative mb-2.5 sm:mb-4 rounded-lg sm:rounded-xl overflow-hidden bg-warm-100/70 border border-warm-200/80 max-h-44 sm:max-h-72 w-full flex items-center justify-center">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={entryPhotos[0]}
-                          alt={`Photo from ${entry.name}`}
-                          className="max-h-44 sm:max-h-72 w-auto max-w-full object-contain rounded-lg"
-                          loading="lazy"
-                          decoding="async"
-                        />
-                        {entryPhotos.length > 1 && (
-                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold backdrop-blur-sm">
-                            +{entryPhotos.length - 1} photos
-                          </span>
-                        )}
+          /* Event Gallery Grid Mode with Paginated Lazy Hydration + CSS content-visibility */
+          <div className="w-full max-h-[78vh] overflow-y-auto touch-scroll pr-1 sm:pr-2 animate-fade-in">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+              {entries.map((entry) => {
+                const entryPhotos = parsePhotoUrls(entry.photo_url);
+                return (
+                  <div
+                    key={entry.id}
+                    className="content-auto bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform duration-200 hover:scale-[1.02]"
+                  >
+                    <div>
+                      {entryPhotos.length > 0 && (
+                        <div className="relative mb-2.5 sm:mb-4 rounded-lg sm:rounded-xl overflow-hidden bg-warm-100/70 border border-warm-200/80 max-h-44 sm:max-h-72 w-full flex items-center justify-center">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={entryPhotos[0]}
+                            alt={`Photo from ${entry.name}`}
+                            className="max-h-44 sm:max-h-72 w-auto max-w-full object-contain rounded-lg"
+                            loading="lazy"
+                            decoding="async"
+                          />
+                          {entryPhotos.length > 1 && (
+                            <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold backdrop-blur-sm">
+                              +{entryPhotos.length - 1} photos
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <p className="font-serif italic text-xs sm:text-base text-warm-800 line-clamp-3 sm:line-clamp-4 mb-2 sm:mb-3 leading-snug">
+                        &ldquo;{entry.message}&rdquo;
+                      </p>
+                    </div>
+
+                    <div className="pt-2 sm:pt-3 border-t border-warm-100 flex items-center justify-between">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="font-serif font-bold text-champagne-900 text-xs sm:text-sm truncate">
+                          {entry.name}
+                        </h4>
+                        <span className="text-[9px] sm:text-[10px] text-warm-500 block truncate">
+                          {formatTimestamp(entry.created_at)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {entry.audio_url && (
+                      <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2">
+                        <AudioPlayer src={entry.audio_url} compact />
                       </div>
                     )}
-
-                    <p className="font-serif italic text-xs sm:text-base text-warm-800 line-clamp-3 sm:line-clamp-4 mb-2 sm:mb-3 leading-snug">
-                      &ldquo;{entry.message}&rdquo;
-                    </p>
                   </div>
+                );
+              })}
+            </div>
 
-                  <div className="pt-2 sm:pt-3 border-t border-warm-100 flex items-center justify-between">
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-serif font-bold text-champagne-900 text-xs sm:text-sm truncate">
-                        {entry.name}
-                      </h4>
-                      <span className="text-[9px] sm:text-[10px] text-warm-500 block truncate">
-                        {formatTimestamp(entry.created_at)}
-                      </span>
-                    </div>
-                  </div>
-
-                  {entry.audio_url && (
-                    <div className="mt-2 sm:mt-3 pt-1.5 sm:pt-2">
-                      <AudioPlayer src={entry.audio_url} compact />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            {/* Paginated Load-More Sentinel (Protects 5 GB Supabase Free Egress!) */}
+            {entries.length < displayedTotal && (
+              <div ref={loadMoreSentinelRef} className="py-6 flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="px-5 py-2.5 rounded-full bg-warm-900/85 hover:bg-champagne-600 border border-champagne-400/50 text-champagne-100 hover:text-white text-xs font-semibold transition shadow-md disabled:opacity-60"
+                >
+                  {isLoadingMore
+                    ? 'Loading memories...'
+                    : `Load More Memories (${entries.length} of ${displayedTotal})`}
+                </button>
+              </div>
+            )}
           </div>
         ) : activeEntry ? (
           /* Cinematic Spotlight Polaroid Mode */
@@ -556,7 +681,6 @@ export default function WallModePage() {
 
       {/* Bottom Cycling & Controller Bar */}
       <footer className="relative z-10 max-w-7xl mx-auto w-full pt-4">
-        {/* Pure GPU-Composited 60fps Progress Bar (Zero React State Re-Renders!) */}
         {!isGridView && entries.length > 1 && (
           <div className="w-full bg-warm-900/80 h-1.5 rounded-full overflow-hidden mb-3 border border-warm-800">
             <div
@@ -604,7 +728,19 @@ export default function WallModePage() {
 
               <span className="ml-2 font-mono text-warm-400">
                 {currentIndex + 1} of {entries.length}
+                {displayedTotal > entries.length ? ` (${displayedTotal} total)` : ''}
               </span>
+
+              {displayedTotal > entries.length && (
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="ml-1 px-2.5 py-1 rounded-full bg-warm-900/80 hover:bg-champagne-600/80 border border-warm-700 text-[10px] text-champagne-200 hover:text-white transition"
+                >
+                  {isLoadingMore ? '...' : '+24 older'}
+                </button>
+              )}
             </div>
           )}
 
