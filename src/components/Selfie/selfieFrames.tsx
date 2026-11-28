@@ -95,7 +95,21 @@ export interface SelfieEventMeta {
 }
 
 export function getSelfieEventMeta(): SelfieEventMeta {
+  const selfieCfg = (
+    EVENT_CONFIG as typeof EVENT_CONFIG & {
+      selfie?: {
+        defaultFrame?: SelfieFrameId;
+        coupleNames?: string;
+        tagline?: string;
+        date?: string;
+        badgeText?: string;
+        allowVideo?: boolean;
+      };
+    }
+  ).selfie;
+
   const fullCoupleName =
+    selfieCfg?.coupleNames?.trim() ||
     EVENT_CONFIG.photobooth?.coupleNames?.trim() ||
     EVENT_CONFIG.title?.trim() ||
     'Our Celebration';
@@ -109,6 +123,7 @@ export function getSelfieEventMeta(): SelfieEventMeta {
   const initials = secondPartner ? `${i1} & ${i2}` : i1;
 
   const rawTagline =
+    selfieCfg?.tagline?.trim() ||
     EVENT_CONFIG.photobooth?.tagline?.trim() ||
     EVENT_CONFIG.eventType?.en?.trim() ||
     'The Celebration of';
@@ -125,7 +140,7 @@ export function getSelfieEventMeta(): SelfieEventMeta {
     firstPartner,
     secondPartner,
     initials,
-    dateLong: EVENT_CONFIG.date?.en || '26 December 2026',
+    dateLong: selfieCfg?.date?.trim() || EVENT_CONFIG.date?.en || '26 December 2026',
     dateNumeric: EVENT_CONFIG.photobooth?.date || EVENT_CONFIG.date?.numeric || '26.12.2026',
     venue: EVENT_CONFIG.venue || '',
     hashtag: EVENT_CONFIG.hashtag || '',

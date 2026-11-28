@@ -29,6 +29,7 @@ import {
 import { PHOTO_FILTERS, PhotoFilter } from '@/components/PhotoFilterSelector';
 import { downloadStripImage } from '@/lib/photoboothCanvas';
 import { useLanguage } from '@/lib/i18n';
+import { EVENT_CONFIG } from '@/config/eventConfig';
 
 interface SelfieCameraModalProps {
   isOpen: boolean;
@@ -47,8 +48,24 @@ export default function SelfieCameraModal({
   const { language } = useLanguage();
   const meta = useMemo(() => getSelfieEventMeta(), []);
 
-  // Default to 'wds01' (index 1) so 'none' sits to the left of the shutter ring just like Kisandah
-  const [selectedFrame, setSelectedFrame] = useState<SelfieFrameId>('wds01');
+  const selfieConfig = (
+    EVENT_CONFIG as typeof EVENT_CONFIG & {
+      selfie?: {
+        defaultFrame?: string;
+        badgeText?: string;
+        allowVideo?: boolean;
+      };
+    }
+  ).selfie;
+
+  const initialFrameId: SelfieFrameId =
+    SELFIE_FRAMES.some((f) => f.id === selfieConfig?.defaultFrame)
+      ? (selfieConfig!.defaultFrame as SelfieFrameId)
+      : 'wds01';
+  const allowVideo = selfieConfig?.allowVideo !== false;
+
+  // Default to configured frame ('wds01' by default so 'none' sits to the left of the shutter ring)
+  const [selectedFrame, setSelectedFrame] = useState<SelfieFrameId>(initialFrameId);
   const [selectedFilter, setSelectedFilter] = useState<PhotoFilter['id']>('original');
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [flashEnabled, setFlashEnabled] = useState<boolean>(false);
@@ -802,7 +819,8 @@ export default function SelfieCameraModal({
             ) : (
               <div className="px-3.5 py-1.5 rounded-full bg-black/50 border border-white/15 backdrop-blur-md flex items-center gap-1.5">
                 <span className="text-[10px] font-bold tracking-[0.12em] uppercase text-white/95">
-                  {language === 'ms' ? 'DIKONGSI BERSAMA SEMUA' : 'SHARED WITH EVERYONE'}
+                  {selfieConfig?.badgeText?.trim() ||
+                    (language === 'ms' ? 'DIKONGSI BERSAMA SEMUA' : 'SHARED WITH EVERYONE')}
                 </span>
               </div>
             )}
@@ -1197,19 +1215,21 @@ export default function SelfieCameraModal({
 
             {/* Capture Mode Pill (● Video · 30s | Photo) */}
             <div className="bg-[#151515] border border-white/15 rounded-full p-1 flex items-center">
-              <button
-                type="button"
-                disabled={isRecordingVideo || isStartingRecord}
-                onClick={() => setCaptureMode('video')}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition ${
-                  captureMode === 'video'
-                    ? 'bg-white text-black font-bold shadow-sm'
-                    : 'text-white/85 hover:text-white'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                <span>Video · 30s</span>
-              </button>
+              {allowVideo && (
+                <button
+                  type="button"
+                  disabled={isRecordingVideo || isStartingRecord}
+                  onClick={() => setCaptureMode('video')}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition ${
+                    captureMode === 'video'
+                      ? 'bg-white text-black font-bold shadow-sm'
+                      : 'text-white/85 hover:text-white'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  <span>Video · 30s</span>
+                </button>
+              )}
 
               <button
                 type="button"
