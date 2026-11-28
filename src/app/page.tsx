@@ -31,6 +31,7 @@ import PhotoFrameSelector, {
   applyFilterAndFrameToCanvas,
 } from '@/components/PhotoFrameSelector';
 import PhotoboothStudio from '@/components/Photobooth/PhotoboothStudio';
+import SelfieCameraModal from '@/components/Selfie/SelfieCameraModal';
 import {
   submitGuestbookEntry,
   isPhotoUploadAllowed,
@@ -82,6 +83,7 @@ export default function GuestbookPage() {
   // Modal / Drawer toggle
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isPhotoboothModalOpen, setIsPhotoboothModalOpen] = useState(false);
+  const [isSelfieModalOpen, setIsSelfieModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -95,13 +97,14 @@ export default function GuestbookPage() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isPhotoboothModalOpen) setIsPhotoboothModalOpen(false);
+        if (isSelfieModalOpen) setIsSelfieModalOpen(false);
+        else if (isPhotoboothModalOpen) setIsPhotoboothModalOpen(false);
         else if (isFormOpen) setIsFormOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFormOpen, isPhotoboothModalOpen]);
+  }, [isFormOpen, isPhotoboothModalOpen, isSelfieModalOpen]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
@@ -148,6 +151,27 @@ export default function GuestbookPage() {
     setSelectedFilter('original');
     setSelectedFrame('none');
     setIsPhotoboothModalOpen(false);
+    setIsFormOpen(true);
+  };
+
+  const handleSelfieComplete = (framedSelfieDataUrl: string) => {
+    if (!photoLimitStatus.allowed) {
+      alert(
+        language === 'ms'
+          ? `Had muat naik foto sebanyak ${photoLimitStatus.limit} keping telah dicapai. Anda tetap boleh menyimpan selfie ke peranti anda!`
+          : `Photo upload limit of ${photoLimitStatus.limit} has been reached. You can still save your selfie to your device!`
+      );
+      setIsSelfieModalOpen(false);
+      return;
+    }
+    setRawPhotos((prev) => {
+      const next = [...prev, framedSelfieDataUrl].slice(0, MAX_PHOTOS_PER_WISH);
+      setActivePhotoIndex(next.length - 1);
+      return next;
+    });
+    setSelectedFilter('original');
+    setSelectedFrame('none');
+    setIsSelfieModalOpen(false);
     setIsFormOpen(true);
   };
 
@@ -457,7 +481,7 @@ export default function GuestbookPage() {
             <img
               src={eventDetails.avatarImage}
               alt={eventDetails.welcomeTitle}
-              className="w-full h-full object-cover object-top"
+              className="w-full h-full object-cover object-[center_35%]"
             />
           </div>
           <div className="absolute -bottom-2 -right-1 w-8 h-8 rounded-full bg-champagne-500 text-white flex items-center justify-center shadow-md border-2 border-white">
@@ -522,14 +546,29 @@ export default function GuestbookPage() {
             <span>{t.shareMomentBtn}</span>
           </button>
 
-          {/* Photobooth Studio Action */}
-          <Link
-            href="/photobooth"
-            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-champagne-800/80 via-warm-900/90 to-amber-900/80 hover:from-champagne-800 hover:to-amber-900 border border-champagne-400/40 text-white font-bold text-xs tracking-wide shadow-lg transition-transform duration-150 active:scale-[0.98] flex items-center justify-center gap-2 group backdrop-blur-xs sm:backdrop-blur-sm gpu-layer"
-          >
-            <Sparkles className="w-4 h-4 text-champagne-300 group-hover:rotate-12 transition-transform duration-200" />
-            <span>{t.photoboothBtn}</span>
-          </Link>
+          {/* Live Selfie Camera (Kisandah-Style 9:16 Frames) & Photobooth Actions */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setIsSelfieModalOpen(true)}
+              className="py-3.5 px-3 rounded-2xl bg-white/12 hover:bg-white/20 border border-champagne-300/40 text-white font-bold text-xs tracking-wide shadow-lg transition-transform duration-150 active:scale-[0.98] flex items-center justify-center gap-1.5 backdrop-blur-xs sm:backdrop-blur-sm gpu-layer"
+            >
+              <Camera className="w-4 h-4 text-champagne-300 shrink-0" />
+              <span className="truncate">
+                {language === 'ms' ? 'Kamera Selfie' : 'Selfie Camera'}
+              </span>
+            </button>
+
+            <Link
+              href="/photobooth"
+              className="py-3.5 px-3 rounded-2xl bg-gradient-to-r from-champagne-800/80 via-warm-900/90 to-amber-900/80 hover:from-champagne-800 hover:to-amber-900 border border-champagne-400/40 text-white font-bold text-xs tracking-wide shadow-lg transition-transform duration-150 active:scale-[0.98] flex items-center justify-center gap-1.5 group backdrop-blur-xs sm:backdrop-blur-sm gpu-layer"
+            >
+              <Sparkles className="w-4 h-4 text-champagne-300 group-hover:rotate-12 transition-transform duration-200 shrink-0" />
+              <span className="truncate">
+                {language === 'ms' ? 'Photobooth' : 'Photobooth'}
+              </span>
+            </Link>
+          </div>
 
           {/* Secondary Action: Live Wall */}
           <Link
@@ -729,12 +768,12 @@ export default function GuestbookPage() {
                       {/* Main Active Photo Preview */}
                       <div className="relative group">
                         <LivePhotoFrameOverlay frameId={selectedFrame}>
-                          <div className="relative overflow-hidden bg-warm-100 rounded-xl">
+                          <div className="relative overflow-hidden bg-warm-950/90 rounded-xl flex items-center justify-center">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={activeRawPhoto}
                               alt={`Guest memory preview ${activePhotoIndex + 1}`}
-                              className="w-full max-h-64 object-cover object-center transition-all duration-300"
+                              className="w-full max-h-80 object-contain object-center transition-all duration-300"
                               style={{ filter: currentFilterConfig.cssFilter }}
                             />
 
@@ -839,7 +878,7 @@ export default function GuestbookPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => cameraInputRef.current?.click()}
+                              onClick={() => setIsSelfieModalOpen(true)}
                               className="w-14 h-14 rounded-xl border border-warm-200 bg-white hover:bg-warm-100 text-warm-700 flex flex-col items-center justify-center flex-shrink-0 transition"
                               title={language === 'ms' ? 'Ambil selfie lagi' : 'Take another selfie'}
                             >
@@ -893,7 +932,7 @@ export default function GuestbookPage() {
                       <div className="grid grid-cols-2 gap-2.5">
                         <button
                           type="button"
-                          onClick={() => cameraInputRef.current?.click()}
+                          onClick={() => setIsSelfieModalOpen(true)}
                           className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl border border-warm-200 bg-white hover:bg-champagne-50 hover:border-champagne-300 transition text-warm-800 group"
                         >
                           <div className="w-8 h-8 rounded-full bg-champagne-100 group-hover:bg-champagne-200 flex items-center justify-center text-champagne-700 transition">
@@ -969,6 +1008,12 @@ export default function GuestbookPage() {
           </div>
         </div>
       )}
+      {/* 7. Kisandah-Style 9:16 Live Selfie Camera Modal */}
+      <SelfieCameraModal
+        isOpen={isSelfieModalOpen}
+        onClose={() => setIsSelfieModalOpen(false)}
+        onCaptureComplete={handleSelfieComplete}
+      />
     </div>
   );
 }

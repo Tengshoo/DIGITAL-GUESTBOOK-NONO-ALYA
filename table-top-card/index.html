@@ -1,0 +1,2163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fikri &amp; Alya — A6 Tabletop QR Cards (3 Theme Variations)</title>
+
+  <!-- Google Fonts matching the Walimatul Urus Fikri & Alya Canva stationery suite -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Great+Vibes&family=Pinyon+Script&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      /* Exact palette extracted from walimatulurusfikridanalya.my.canva.site/digital/home */
+      --ivory: #F5F2EF;
+      --ivory-light: #FAF8F5;
+      --ivory-warm: #EDE7E0;
+      --olive-deep: #3A3F21;
+      --olive-mid: #4B522C;
+      --olive-text: #50502D;
+      --olive-stroke: #5C5E35;
+      --mauve-burgundy: #9B5059;
+      --wine-burgundy: #7D3A46;
+      --oxblood: #491B1D;
+      --oxblood-dark: #331113;
+      --white: #FFFFFF;
+
+      /* Exact A6 Portrait dimensions */
+      --a6-w: 105mm;
+      --a6-h: 148mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    html, body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #EAE5DF;
+      color: #2E2B27;
+      min-height: 100vh;
+    }
+
+    /* =====================================================================
+       STUDIO PREVIEW UI (Hidden during Print & Export modes)
+       ===================================================================== */
+    .studio-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(250, 248, 245, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(92, 94, 53, 0.2);
+      padding: 14px 24px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .studio-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .studio-badge {
+      background: var(--oxblood);
+      color: var(--ivory);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 5px 10px;
+      border-radius: 999px;
+    }
+
+    .studio-title h1 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--olive-deep);
+      line-height: 1.1;
+    }
+
+    .studio-title p {
+      font-size: 12px;
+      color: #6B655D;
+      margin-top: 2px;
+    }
+
+    .studio-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(92, 94, 53, 0.35);
+      background: #FFFFFF;
+      color: var(--olive-deep);
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+    }
+
+    .btn:hover {
+      background: var(--ivory);
+      border-color: var(--olive-stroke);
+    }
+
+    .btn-primary {
+      background: var(--olive-deep);
+      color: var(--ivory);
+      border-color: var(--olive-deep);
+    }
+
+    .btn-primary:hover {
+      background: #4C532B;
+    }
+
+    .btn-maroon {
+      background: var(--oxblood);
+      color: var(--ivory);
+      border-color: var(--oxblood);
+    }
+
+    .btn-maroon:hover {
+      background: #5E2427;
+    }
+
+    /* Collapsible Live Editor */
+    .editor-panel {
+      display: none;
+      background: #FAF8F5;
+      border-bottom: 1px solid rgba(92, 94, 53, 0.2);
+      padding: 18px 24px;
+    }
+
+    .editor-panel.open {
+      display: block;
+    }
+
+    .editor-grid {
+      max-width: 1240px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px 16px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--olive-text);
+      margin-bottom: 4px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid rgba(92, 94, 53, 0.28);
+      border-radius: 7px;
+      background: #FFFFFF;
+      font-size: 13px;
+      color: #2A2723;
+    }
+
+    .field input:focus {
+      outline: 2px solid rgba(125, 58, 70, 0.25);
+      border-color: var(--wine-burgundy);
+    }
+
+    /* Gallery Layout */
+    .gallery-stage {
+      max-width: 1420px;
+      margin: 0 auto;
+      padding: 36px 24px 64px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 36px;
+    }
+
+    .card-showcase {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: var(--a6-w);
+      padding: 0 2px;
+    }
+
+    .card-meta-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--olive-deep);
+      letter-spacing: 0.04em;
+    }
+
+    .card-meta-sub {
+      font-size: 11px;
+      color: #726C63;
+    }
+
+    .card-print-btn {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(92, 94, 53, 0.35);
+      background: #FFF;
+      color: var(--olive-deep);
+      cursor: pointer;
+    }
+
+    .card-print-btn:hover {
+      background: var(--olive-deep);
+      color: #FFF;
+    }
+
+    /* =====================================================================
+       EXACT A6 PORTRAIT CARD CANVAS (105mm × 148mm)
+       ===================================================================== */
+    .a6-card {
+      position: relative;
+      width: var(--a6-w);
+      height: var(--a6-h);
+      overflow: hidden;
+      flex-shrink: 0;
+      box-shadow: 0 22px 50px rgba(40, 28, 22, 0.18), 0 4px 12px rgba(40, 28, 22, 0.08);
+      isolation: isolate;
+      user-select: none;
+    }
+
+    .card-layer-bg,
+    .card-layer-texture,
+    .card-layer-frame,
+    .card-layer-art {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .card-layer-content {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    /* Typography Utility Classes */
+    .font-script {
+      font-family: 'Great Vibes', 'Pinyon Script', cursive;
+      font-weight: 400;
+    }
+
+    .font-pinyon {
+      font-family: 'Pinyon Script', 'Great Vibes', cursive;
+      font-weight: 400;
+    }
+
+    .font-serif {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+    }
+
+    /* Shared Crisp QR Code Box (Guaranteed 4-module quiet zone & high contrast) */
+    .qr-img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Shared 3-Feature Micro Row */
+    .feature-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5mm;
+      width: 100%;
+    }
+
+    .feature-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 1.1mm;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 2.5mm;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .feature-dot {
+      width: 0.85mm;
+      height: 0.85mm;
+      border-radius: 50%;
+      opacity: 0.55;
+      flex-shrink: 0;
+    }
+
+    /* =====================================================================
+       VARIATION 1: WARM IVORY SCALLOPED STATIONERY
+       Matches hero right-hand scalloped cream card + calla lilies & bouquet
+       ===================================================================== */
+    .card-ivory {
+      background: radial-gradient(circle at 50% 42%, #FAF8F5 0%, #F5F2EF 62%, #EFEAE3 100%);
+      color: var(--olive-text);
+    }
+
+    .card-ivory .card-layer-content {
+      padding: 13.5mm 12.5mm 12mm;
+      justify-content: space-between;
+    }
+
+    .card-ivory .eyebrow {
+      font-size: 2.5mm;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--olive-text);
+      margin-bottom: 1.4mm;
+    }
+
+    .card-ivory .couple-names {
+      font-size: 13.6mm;
+      line-height: 0.96;
+      color: var(--wine-burgundy);
+      text-shadow: 0 0.25mm 0.4mm rgba(73, 27, 29, 0.08);
+      margin-bottom: 1.8mm;
+      padding: 0 2mm;
+    }
+
+    .card-ivory .couple-names .amp {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 9.8mm;
+      color: var(--mauve-burgundy);
+      margin: 0 1.4mm;
+      vertical-align: 0.6mm;
+    }
+
+    .card-ivory .event-meta {
+      font-size: 2.65mm;
+      font-weight: 600;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--olive-text);
+    }
+
+    .card-ivory .event-meta-venue {
+      font-family: 'Pinyon Script', cursive;
+      font-size: 5.4mm;
+      color: var(--mauve-burgundy);
+      line-height: 1.05;
+      margin-top: 0.6mm;
+    }
+
+    .card-ivory .hairline-divider {
+      width: 24mm;
+      height: 0.25mm;
+      background: linear-gradient(90deg, transparent, var(--olive-stroke), transparent);
+      margin: 1.8mm auto 0;
+      opacity: 0.65;
+    }
+
+    /* Center QR Plaque — Ivory */
+    .card-ivory .qr-stage {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0.8mm 0;
+    }
+
+    .card-ivory .qr-frame {
+      position: relative;
+      width: 46mm;
+      height: 46mm;
+      background: #FFFFFF;
+      border-radius: 3.2mm;
+      padding: 2mm;
+      border: 0.35mm solid rgba(92, 94, 53, 0.55);
+      box-shadow:
+        0 3.2mm 8mm rgba(58, 63, 33, 0.11),
+        0 0.8mm 2mm rgba(73, 27, 29, 0.06),
+        inset 0 0 0 1.05mm #FFFFFF,
+        inset 0 0 0 1.28mm rgba(125, 58, 70, 0.25);
+    }
+
+    .card-ivory .scan-pill {
+      margin-top: -2.3mm;
+      position: relative;
+      z-index: 5;
+      background: var(--olive-deep);
+      color: var(--ivory-light);
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 2.45mm;
+      font-weight: 600;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      padding: 1.1mm 4.8mm 1mm;
+      border-radius: 999px;
+      border: 0.35mm solid #FAF8F5;
+      box-shadow: 0 1.2mm 3mm rgba(58, 63, 33, 0.22);
+    }
+
+    .card-ivory .cta-script {
+      font-size: 8.2mm;
+      line-height: 1.0;
+      color: var(--wine-burgundy);
+      margin-bottom: 1.1mm;
+    }
+
+    .card-ivory .cta-body {
+      font-size: 3.1mm;
+      line-height: 1.38;
+      font-weight: 500;
+      color: var(--olive-text);
+      max-width: 60mm;
+      margin: 0 auto 2.5mm;
+    }
+
+    .card-ivory .feature-pill {
+      font-size: 2.35mm;
+      color: var(--olive-deep);
+    }
+
+    .card-ivory .feature-dot {
+      background: var(--mauve-burgundy);
+    }
+
+    .card-ivory .card-footer {
+      width: 66mm;
+      padding-top: 2mm;
+      border-top: 0.22mm solid rgba(92, 94, 53, 0.26);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5mm;
+    }
+
+    .card-ivory .footer-url {
+      font-size: 2.55mm;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: var(--olive-text);
+    }
+
+    .card-ivory .footer-tag {
+      font-size: 2.55mm;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--wine-burgundy);
+    }
+
+    /* =====================================================================
+       VARIATION 2: DEEP OXBLOOD MAROON (Pebbled Cardstock + Ivory Scalloped Plaque)
+       Fuses the hero maroon Fikri & Alya card + scalloped ivory card
+       ===================================================================== */
+    .card-maroon {
+      background: radial-gradient(circle at 52% 38%, #5B2225 0%, #491B1D 58%, #341012 100%);
+      color: var(--ivory);
+    }
+
+    .card-maroon .card-layer-content {
+      padding: 12mm 11mm 11.5mm;
+      justify-content: space-between;
+    }
+
+    .card-maroon .eyebrow {
+      font-size: 2.45mm;
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: rgba(245, 242, 239, 0.84);
+      margin-bottom: 1.2mm;
+    }
+
+    .card-maroon .couple-names {
+      font-size: 13.8mm;
+      line-height: 0.96;
+      color: #FFFFFF;
+      text-shadow: 0 0.6mm 2.2mm rgba(22, 6, 7, 0.45);
+      margin-bottom: 1.4mm;
+    }
+
+    .card-maroon .couple-names .amp {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 9.8mm;
+      color: #EBD8CE;
+      margin: 0 1.4mm;
+      vertical-align: 0.6mm;
+    }
+
+    .card-maroon .event-meta {
+      font-size: 2.55mm;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(245, 242, 239, 0.88);
+    }
+
+    /* Elevated Scalloped Ivory QR Plaque on Oxblood Maroon */
+    .card-maroon .ivory-plaque {
+      position: relative;
+      width: 63mm;
+      height: 61mm;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0.5mm 0;
+    }
+
+    .card-maroon .ivory-plaque-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 3.5mm 6.5mm rgba(18, 4, 5, 0.45));
+    }
+
+    .card-maroon .ivory-plaque-inner {
+      position: relative;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 0.8mm;
+    }
+
+    .card-maroon .qr-frame {
+      width: 41.5mm;
+      height: 41.5mm;
+      background: #FFFFFF;
+      padding: 1.5mm;
+      border-radius: 2.2mm;
+      border: 0.28mm solid rgba(92, 94, 53, 0.35);
+      box-shadow: 0 1mm 2.5mm rgba(73, 27, 29, 0.08);
+    }
+
+    .card-maroon .plaque-caption {
+      margin-top: 2mm;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 2.5mm;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--olive-deep);
+    }
+
+    .card-maroon .cta-script {
+      font-size: 8.2mm;
+      line-height: 1.0;
+      color: #F6E9DF;
+      margin-bottom: 1.1mm;
+    }
+
+    .card-maroon .cta-body {
+      font-size: 3.1mm;
+      line-height: 1.38;
+      font-weight: 400;
+      color: rgba(250, 246, 242, 0.92);
+      max-width: 60mm;
+      margin: 0 auto 2.3mm;
+    }
+
+    .card-maroon .feature-pill {
+      color: #F5EBE2;
+    }
+
+    .card-maroon .feature-dot {
+      background: #DFC3B6;
+    }
+
+    .card-maroon .card-footer {
+      width: 66mm;
+      padding-top: 1.8mm;
+      border-top: 0.22mm solid rgba(255, 255, 255, 0.24);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45mm;
+    }
+
+    .card-maroon .footer-url {
+      font-size: 2.5mm;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .card-maroon .footer-tag {
+      font-size: 2.5mm;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #F2D8CD;
+    }
+
+    /* =====================================================================
+       VARIATION 3: DEEP OLIVE VELVET (Ornate Cream Baroque Frame + Olive Satin Bow)
+       Directly mirrors the Doa Buat Pengantin plaque + velvet envelope & footer
+       ===================================================================== */
+    .card-olive {
+      background: radial-gradient(circle at 50% 44%, #4B522B 0%, #3A3F21 56%, #292D16 100%);
+      color: var(--ivory);
+    }
+
+    .card-olive .card-layer-content {
+      padding: 25.5mm 14mm 12.5mm;
+      justify-content: space-between;
+    }
+
+    .card-olive .eyebrow {
+      font-size: 2.35mm;
+      font-weight: 600;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: #E7E2D5;
+      margin-bottom: 1.1mm;
+    }
+
+    .card-olive .couple-names {
+      font-size: 12.6mm;
+      line-height: 0.96;
+      color: #FFFFFF;
+      text-shadow: 0 0.5mm 1.8mm rgba(20, 23, 10, 0.45);
+      margin-bottom: 1.3mm;
+    }
+
+    .card-olive .couple-names .amp {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 9.2mm;
+      color: #E8DFC8;
+      margin: 0 1.2mm;
+      vertical-align: 0.5mm;
+    }
+
+    .card-olive .event-meta {
+      font-size: 2.4mm;
+      font-weight: 500;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: rgba(245, 242, 239, 0.88);
+    }
+
+    /* Warm Ivory Arch/Card QR Inset on Deep Olive Velvet */
+    .card-olive .qr-inset {
+      position: relative;
+      background: linear-gradient(180deg, #FAF8F5 0%, #F4EFE8 100%);
+      padding: 2.8mm 2.8mm 2.4mm;
+      border-radius: 3.4mm;
+      border: 0.35mm solid rgba(255, 255, 255, 0.7);
+      box-shadow:
+        0 3.2mm 7mm rgba(18, 21, 9, 0.42),
+        inset 0 0 0 0.95mm #FAF8F5,
+        inset 0 0 0 1.22mm rgba(125, 58, 70, 0.38);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 0.4mm 0;
+    }
+
+    .card-olive .qr-frame {
+      width: 40mm;
+      height: 40mm;
+      background: #FFFFFF;
+      padding: 1.3mm;
+      border-radius: 1.8mm;
+    }
+
+    .card-olive .plaque-caption {
+      margin-top: 1.7mm;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 2.35mm;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--wine-burgundy);
+    }
+
+    .card-olive .cta-script {
+      font-size: 7.8mm;
+      line-height: 1.0;
+      color: #F6F1E6;
+      margin-bottom: 0.9mm;
+    }
+
+    .card-olive .cta-body {
+      font-size: 3mm;
+      line-height: 1.36;
+      font-weight: 400;
+      color: rgba(248, 245, 239, 0.92);
+      max-width: 58mm;
+      margin: 0 auto 2mm;
+    }
+
+    .card-olive .feature-row {
+      gap: 2mm;
+    }
+
+    .card-olive .feature-pill {
+      font-size: 2.3mm;
+      letter-spacing: 0.06em;
+      color: #F3EDE2;
+    }
+
+    .card-olive .feature-dot {
+      background: #D5C9B4;
+    }
+
+    .card-olive .card-footer {
+      width: 62mm;
+      padding-top: 1.6mm;
+      border-top: 0.22mm solid rgba(245, 242, 239, 0.28);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4mm;
+    }
+
+    .card-olive .footer-url {
+      font-size: 2.45mm;
+      font-weight: 500;
+      letter-spacing: 0.11em;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    .card-olive .footer-tag {
+      font-size: 2.45mm;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: #E6D4C8;
+    }
+
+    /* =====================================================================
+       PRINT & HEADLESS EXPORT MODES (EXACT 105mm × 148mm A6)
+       ===================================================================== */
+    @page {
+      size: 105mm 148mm;
+      margin: 0;
+    }
+
+    /* Single-card PNG / PDF headless export mode via URL query (?card=ivory&export=png) */
+    body.export-mode {
+      background: transparent !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+    }
+
+    body.export-mode .studio-bar,
+    body.export-mode .editor-panel,
+    body.export-mode .card-meta {
+      display: none !important;
+    }
+
+    body.export-mode .gallery-stage {
+      margin: 0 !important;
+      padding: 0 !important;
+      max-width: none !important;
+      display: block !important;
+      gap: 0 !important;
+    }
+
+    body.export-mode .card-showcase {
+      display: block !important;
+      gap: 0 !important;
+      page-break-after: always;
+      break-after: page;
+    }
+
+    body.export-mode .card-showcase:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    body.export-mode .card-showcase.hidden-card {
+      display: none !important;
+    }
+
+    body.export-mode .a6-card {
+      box-shadow: none !important;
+    }
+
+    /* Exact 1240×1748 (300 DPI) PNG pixel-perfect scaling mode */
+    body.export-png {
+      width: 1240px !important;
+      height: 1748px !important;
+    }
+
+    body.export-png .a6-card {
+      transform: scale(3.124603);
+      transform-origin: top left;
+    }
+
+    @media print {
+      html, body {
+        background: #FFFFFF !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 105mm !important;
+      }
+
+      .studio-bar,
+      .editor-panel,
+      .card-meta {
+        display: none !important;
+      }
+
+      .gallery-stage {
+        margin: 0 !important;
+        padding: 0 !important;
+        max-width: none !important;
+        display: block !important;
+        gap: 0 !important;
+      }
+
+      .card-showcase {
+        display: block !important;
+        width: 105mm !important;
+        height: 148mm !important;
+        page-break-after: always;
+        break-after: page;
+      }
+
+      .card-showcase:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+
+      .card-showcase.hidden-card {
+        display: none !important;
+      }
+
+      .a6-card {
+        width: 105mm !important;
+        height: 148mm !important;
+        box-shadow: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- =======================================================================
+       REUSABLE SHARED SVG DEFS:
+       Tactile Paper/Cardstock/Velvet Filters, 3D Pearls, Painterly Botanicals
+       ======================================================================= -->
+  <svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true">
+    <defs>
+      <!-- 1. Tactile Surface Grain Filters -->
+      <filter id="tex-cotton" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.4" numOctaves="4" seed="11" result="noise" />
+        <feDiffuseLighting in="noise" lighting-color="#FFFDF9" surfaceScale="0.32" result="light">
+          <feDistantLight azimuth="48" elevation="68" />
+        </feDiffuseLighting>
+        <feComponentTransfer in="light" result="softLight">
+          <feFuncR type="linear" slope="0.22" intercept="0.78" />
+          <feFuncG type="linear" slope="0.22" intercept="0.78" />
+          <feFuncB type="linear" slope="0.22" intercept="0.78" />
+        </feComponentTransfer>
+        <feBlend in="SourceGraphic" in2="softLight" mode="multiply" />
+      </filter>
+
+      <filter id="tex-pebbled" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="turbulence" baseFrequency="0.58" numOctaves="5" seed="27" result="noise" />
+        <feDiffuseLighting in="noise" lighting-color="#A8656A" surfaceScale="1.95" result="light">
+          <feDistantLight azimuth="135" elevation="52" />
+        </feDiffuseLighting>
+        <feComponentTransfer in="light" result="softLight">
+          <feFuncR type="linear" slope="0.48" intercept="0.52" />
+          <feFuncG type="linear" slope="0.48" intercept="0.52" />
+          <feFuncB type="linear" slope="0.48" intercept="0.52" />
+        </feComponentTransfer>
+        <feBlend in="SourceGraphic" in2="softLight" mode="multiply" />
+      </filter>
+
+      <filter id="tex-velvet" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="1.05 1.45" numOctaves="4" seed="7" result="noise" />
+        <feDiffuseLighting in="noise" lighting-color="#9CA56E" surfaceScale="1.25" result="light">
+          <feDistantLight azimuth="65" elevation="58" />
+        </feDiffuseLighting>
+        <feComponentTransfer in="light" result="softLight">
+          <feFuncR type="linear" slope="0.34" intercept="0.66" />
+          <feFuncG type="linear" slope="0.34" intercept="0.66" />
+          <feFuncB type="linear" slope="0.34" intercept="0.66" />
+        </feComponentTransfer>
+        <feBlend in="SourceGraphic" in2="softLight" mode="multiply" />
+      </filter>
+
+      <!-- Soft Realistic Studio Drop Shadows -->
+      <filter id="shadow-soft" x="-25%" y="-25%" width="160%" height="160%">
+        <feDropShadow dx="1.2" dy="2.2" stdDeviation="2.4" flood-color="#221712" flood-opacity="0.26" />
+      </filter>
+      <filter id="shadow-deep" x="-25%" y="-25%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="3.2" stdDeviation="3.4" flood-color="#140908" flood-opacity="0.42" />
+      </filter>
+      <filter id="shadow-pearl" x="-45%" y="-45%" width="190%" height="190%">
+        <feDropShadow dx="0.8" dy="1.4" stdDeviation="1.25" flood-color="#1C1410" flood-opacity="0.34" />
+      </filter>
+
+      <!-- 2. Glossy 3D Cream Pearl Gradients -->
+      <radialGradient id="pearl-grad" cx="35%" cy="30%" r="68%" fx="30%" fy="26%">
+        <stop offset="0%" stop-color="#FFFFFF" />
+        <stop offset="28%" stop-color="#FCF9F3" />
+        <stop offset="62%" stop-color="#E5DDD0" />
+        <stop offset="86%" stop-color="#BEB2A0" />
+        <stop offset="100%" stop-color="#DDD4C6" />
+      </radialGradient>
+
+      <!-- 3. Calla Lily & Satin Ribbon Gradients -->
+      <linearGradient id="calla-white-outer" x1="15%" y1="10%" x2="88%" y2="90%">
+        <stop offset="0%" stop-color="#FFFFFF" />
+        <stop offset="48%" stop-color="#F7F2EA" />
+        <stop offset="82%" stop-color="#E4DBD0" />
+        <stop offset="100%" stop-color="#CFC4B6" />
+      </linearGradient>
+      <linearGradient id="calla-white-inner" x1="20%" y1="0%" x2="80%" y2="100%">
+        <stop offset="0%" stop-color="#E7E0D4" />
+        <stop offset="55%" stop-color="#C8C4A3" />
+        <stop offset="100%" stop-color="#87934B" />
+      </linearGradient>
+      <linearGradient id="calla-burg-outer" x1="15%" y1="12%" x2="88%" y2="88%">
+        <stop offset="0%" stop-color="#8A3242" />
+        <stop offset="40%" stop-color="#5B1B26" />
+        <stop offset="78%" stop-color="#3E0F17" />
+        <stop offset="100%" stop-color="#27080D" />
+      </linearGradient>
+      <linearGradient id="calla-burg-inner" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#3B0D14" />
+        <stop offset="100%" stop-color="#1E0509" />
+      </linearGradient>
+      <linearGradient id="spadix-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FAF0B8" />
+        <stop offset="60%" stop-color="#E3CE7D" />
+        <stop offset="100%" stop-color="#B9A04C" />
+      </linearGradient>
+      <linearGradient id="stem-green" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#849B48" />
+        <stop offset="55%" stop-color="#61772E" />
+        <stop offset="100%" stop-color="#45581F" />
+      </linearGradient>
+
+      <!-- Champagne Satin Ribbon -->
+      <linearGradient id="ribbon-champagne-1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFFDF9" />
+        <stop offset="32%" stop-color="#F1E4D4" />
+        <stop offset="68%" stop-color="#D4C0A8" />
+        <stop offset="100%" stop-color="#B59D82" />
+      </linearGradient>
+      <linearGradient id="ribbon-champagne-2" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E7D7C4" />
+        <stop offset="45%" stop-color="#FAF3EA" />
+        <stop offset="80%" stop-color="#C8B197" />
+        <stop offset="100%" stop-color="#9E866B" />
+      </linearGradient>
+
+      <!-- Deep Olive Satin Ribbon (for Variation 3, matching Doa Buat Pengantin bow) -->
+      <linearGradient id="ribbon-olive-loop" x1="10%" y1="0%" x2="90%" y2="100%">
+        <stop offset="0%" stop-color="#6D7642" />
+        <stop offset="28%" stop-color="#4E562A" />
+        <stop offset="62%" stop-color="#373D1D" />
+        <stop offset="100%" stop-color="#222611" />
+      </linearGradient>
+      <linearGradient id="ribbon-olive-tail-l" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#32371A" />
+        <stop offset="36%" stop-color="#586132" />
+        <stop offset="64%" stop-color="#707945" />
+        <stop offset="100%" stop-color="#3B411F" />
+      </linearGradient>
+      <linearGradient id="ribbon-olive-tail-r" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#32371A" />
+        <stop offset="36%" stop-color="#586132" />
+        <stop offset="64%" stop-color="#707945" />
+        <stop offset="100%" stop-color="#3B411F" />
+      </linearGradient>
+
+      <!-- Ivory Garden Rose & Burgundy Anthurium Gradients -->
+      <radialGradient id="rose-petal-outer" cx="40%" cy="35%" r="65%">
+        <stop offset="0%" stop-color="#FFFDFB" />
+        <stop offset="68%" stop-color="#F2E9DF" />
+        <stop offset="100%" stop-color="#D7C8B8" />
+      </radialGradient>
+      <radialGradient id="rose-petal-mid" cx="45%" cy="40%" r="62%">
+        <stop offset="0%" stop-color="#FAF3EB" />
+        <stop offset="65%" stop-color="#E5D5C4" />
+        <stop offset="100%" stop-color="#C6B19D" />
+      </radialGradient>
+      <radialGradient id="anthurium-grad" cx="35%" cy="28%" r="72%">
+        <stop offset="0%" stop-color="#762834" />
+        <stop offset="45%" stop-color="#4B151D" />
+        <stop offset="100%" stop-color="#28090D" />
+      </radialGradient>
+      <linearGradient id="fittonia-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#ECEFE7" />
+        <stop offset="60%" stop-color="#D3DAC9" />
+        <stop offset="100%" stop-color="#A9B59B" />
+      </linearGradient>
+
+      <!-- REUSABLE 3D PEARL SYMBOL -->
+      <symbol id="sym-pearl" viewBox="0 0 24 24">
+        <g filter="url(#shadow-pearl)">
+          <circle cx="12" cy="12" r="9.2" fill="url(#pearl-grad)" />
+          <ellipse cx="9.1" cy="8.4" rx="2.9" ry="1.9" transform="rotate(-26 9.1 8.4)" fill="#FFFFFF" opacity="0.92" />
+          <circle cx="15.3" cy="15.4" r="1.4" fill="#FFFDF9" opacity="0.32" />
+        </g>
+      </symbol>
+
+      <!-- REUSABLE BOTANICAL CORNER BOUQUET (Matches hero top-left floral cluster) -->
+      <symbol id="sym-corner-bouquet" viewBox="0 0 180 230">
+        <g filter="url(#shadow-soft)">
+          <!-- Trailing Green Amaranthus Plumes cascading down far left -->
+          <g stroke-linecap="round" fill="none">
+            <path d="M 38 92 C 33 128, 30 165, 34 214" stroke="#5A6930" stroke-width="1.4" opacity="0.85" />
+            <path d="M 52 96 C 48 128, 46 158, 50 198" stroke="#6B7C3B" stroke-width="1.25" opacity="0.82" />
+            <path d="M 64 94 C 63 122, 65 148, 69 178" stroke="#53622B" stroke-width="1.15" opacity="0.78" />
+          </g>
+          <!-- Amaranthus organic beaded foliage dots -->
+          <g fill="#738442">
+            <ellipse cx="35" cy="108" rx="3.2" ry="1.8" transform="rotate(-25 35 108)" />
+            <ellipse cx="40" cy="116" rx="2.8" ry="1.6" transform="rotate(20 40 116)" />
+            <ellipse cx="33" cy="126" rx="3.3" ry="1.8" transform="rotate(-18 33 126)" />
+            <ellipse cx="38" cy="136" rx="2.9" ry="1.6" transform="rotate(24 38 136)" />
+            <ellipse cx="31" cy="148" rx="3.0" ry="1.7" transform="rotate(-22 31 148)" />
+            <ellipse cx="36" cy="160" rx="2.6" ry="1.5" transform="rotate(18 36 160)" />
+            <ellipse cx="32" cy="174" rx="2.5" ry="1.4" transform="rotate(-15 32 174)" />
+            <ellipse cx="35" cy="188" rx="2.1" ry="1.2" transform="rotate(14 35 188)" />
+            <ellipse cx="34" cy="202" rx="1.8" ry="1.1" transform="rotate(-12 34 202)" />
+          </g>
+          <g fill="#5B6B31">
+            <ellipse cx="50" cy="112" rx="3.0" ry="1.7" transform="rotate(22 50 112)" />
+            <ellipse cx="46" cy="122" rx="2.9" ry="1.6" transform="rotate(-20 46 122)" />
+            <ellipse cx="51" cy="134" rx="2.7" ry="1.5" transform="rotate(25 51 134)" />
+            <ellipse cx="47" cy="146" rx="2.7" ry="1.5" transform="rotate(-18 47 146)" />
+            <ellipse cx="51" cy="158" rx="2.4" ry="1.4" transform="rotate(18 51 158)" />
+            <ellipse cx="48" cy="172" rx="2.2" ry="1.3" transform="rotate(-16 48 172)" />
+            <ellipse cx="50" cy="186" rx="1.8" ry="1.1" transform="rotate(12 50 186)" />
+            <ellipse cx="64" cy="110" rx="2.8" ry="1.6" transform="rotate(-18 64 110)" />
+            <ellipse cx="68" cy="124" rx="2.5" ry="1.4" transform="rotate(20 68 124)" />
+            <ellipse cx="65" cy="138" rx="2.4" ry="1.4" transform="rotate(-15 65 138)" />
+            <ellipse cx="69" cy="152" rx="2.1" ry="1.2" transform="rotate(18 69 152)" />
+            <ellipse cx="68" cy="166" rx="1.8" ry="1.1" transform="rotate(-14 68 166)" />
+          </g>
+
+          <!-- Background Foliage Leaves -->
+          <path d="M 80 58 C 102 30, 128 32, 138 54 C 118 66, 96 68, 80 58 Z" fill="#4C582B" />
+          <path d="M 30 58 C 12 42, 12 20, 32 14 C 46 28, 46 46, 30 58 Z" fill="#556330" />
+
+          <!-- Airy Baby's Breath Sprigs (Gypsophila) -->
+          <g stroke="#6C7A46" stroke-width="0.7" fill="none" opacity="0.8">
+            <path d="M 48 48 L 16 66 M 48 48 L 14 84 M 78 44 L 116 26 M 88 64 L 128 74 M 80 86 L 104 118" />
+            <path d="M 24 62 L 10 56 M 112 28 L 124 18 M 118 72 L 134 64 M 96 106 L 112 114" />
+          </g>
+          <g fill="#FFFFFF">
+            <circle cx="15" cy="66" r="2.6" /><circle cx="10" cy="56" r="2.1" /><circle cx="20" cy="74" r="2.3" />
+            <circle cx="13" cy="84" r="2.5" /><circle cx="22" cy="90" r="1.9" /><circle cx="116" cy="26" r="2.6" />
+            <circle cx="124" cy="18" r="2.2" /><circle cx="108" cy="19" r="2.0" /><circle cx="128" cy="74" r="2.5" />
+            <circle cx="134" cy="64" r="2.2" /><circle cx="122" cy="84" r="2.0" /><circle cx="104" cy="118" r="2.4" />
+            <circle cx="112" cy="114" r="1.9" /><circle cx="94" cy="124" r="2.0" /><circle cx="76" cy="126" r="2.2" />
+            <circle cx="42" cy="110" r="1.9" /><circle cx="62" cy="122" r="2.0" />
+          </g>
+
+          <!-- Antique Olive-Mauve Hydrangea Cluster (Right side of cluster) -->
+          <g transform="translate(88, 66)">
+            <circle cx="0" cy="0" r="23" fill="#4E4234" />
+            <g fill="#6A5B44" opacity="0.92">
+              <circle cx="-11" cy="-9" r="6.2" /><circle cx="1" cy="-13" r="6.4" /><circle cx="12" cy="-7" r="6" />
+              <circle cx="-14" cy="3" r="6" /><circle cx="-2" cy="1" r="6.8" /><circle cx="11" cy="6" r="6.2" />
+              <circle cx="-6" cy="13" r="5.8" /><circle cx="6" cy="14" r="5.6" />
+            </g>
+            <g fill="#7A4C52" opacity="0.72">
+              <circle cx="-7" cy="-4" r="4.2" /><circle cx="6" cy="-9" r="4.4" /><circle cx="14" cy="1" r="4" />
+              <circle cx="-9" cy="8" r="4.1" /><circle cx="3" cy="8" r="4.5" />
+            </g>
+            <g fill="#A89A78" opacity="0.55">
+              <circle cx="-11" cy="-9" r="1.6" /><circle cx="1" cy="-13" r="1.6" /><circle cx="12" cy="-7" r="1.5" />
+              <circle cx="-2" cy="1" r="1.7" /><circle cx="11" cy="6" r="1.5" /><circle cx="-6" cy="13" r="1.5" />
+            </g>
+          </g>
+
+          <!-- Two Dark Burgundy Heart-Shaped Anthuriums (Top of cluster) -->
+          <g transform="translate(46, 26) rotate(-18)">
+            <path d="M 0 18 C -15 12, -18 -4, -8 -14 C -3 -19, 0 -13, 0 -10 C 0 -13, 3 -19, 8 -14 C 18 -4, 15 12, 0 18 Z" fill="url(#anthurium-grad)" />
+            <path d="M 0 15 L 0 -9 M 0 9 L -8 2 M 0 9 L 8 2 M 0 3 L -9 -5 M 0 3 L 9 -5" stroke="#C5999E" stroke-width="0.65" opacity="0.5" fill="none" />
+            <path d="M 0 1 C 1 -4, 2 -9, 1 -13" stroke="#EFE1BA" stroke-width="2.1" stroke-linecap="round" />
+          </g>
+          <g transform="translate(70, 28) rotate(14)">
+            <path d="M 0 19 C -16 13, -19 -4, -9 -15 C -3 -20, 0 -14, 0 -11 C 0 -14, 3 -20, 9 -15 C 19 -4, 16 13, 0 19 Z" fill="url(#anthurium-grad)" />
+            <path d="M 0 16 L 0 -10 M 0 10 L -9 2 M 0 10 L 9 2 M 0 3 L -9 -5 M 0 3 L 9 -5" stroke="#C5999E" stroke-width="0.65" opacity="0.5" fill="none" />
+            <path d="M 0 1 C -1 -4, -1 -9, 0 -13" stroke="#EFE1BA" stroke-width="2.2" stroke-linecap="round" />
+          </g>
+
+          <!-- Silver-Veined Fittonia Leaf (Signature detail from website!) -->
+          <g transform="translate(36, 90) rotate(-32)">
+            <path d="M 0 -19 C 11 -11, 14 4, 0 19 C -14 4, -11 -11, 0 -19 Z" fill="url(#fittonia-leaf)" stroke="#4F5A34" stroke-width="0.85" />
+            <path d="M 0 -17 L 0 17 M 0 -9 L 7 -4 M 0 -9 L -7 -4 M 0 -1 L 9 5 M 0 -1 L -9 5 M 0 7 L 6 12 M 0 7 L -6 12" stroke="#4F5A34" stroke-width="0.7" fill="none" opacity="0.8" />
+          </g>
+
+          <!-- Hero Ivory Garden Rose (Center-Left — ruffled botanical petals) -->
+          <g transform="translate(46, 56)">
+            <path d="M -20 -4 C -22 -14, -10 -22, 0 -20 C 12 -22, 22 -12, 19 -1 C 22 10, 13 21, 1 19 C -11 21, -21 12, -19 2 C -21 0, -21 -2, -20 -4 Z" fill="url(#rose-petal-outer)" stroke="#D5C5B4" stroke-width="0.65" />
+            <path d="M -15 -7 C -13 -16, -2 -18, 6 -13 C 16 -13, 18 -2, 13 6 C 14 14, 4 17, -4 13 C -13 15, -18 5, -14 -2 Z" fill="url(#rose-petal-mid)" stroke="#CAB6A2" stroke-width="0.65" />
+            <path d="M -10 -6 C -6 -13, 4 -12, 8 -6 C 13 -2, 10 8, 2 10 C -5 13, -12 7, -10 -1 Z" fill="#FBF5EE" stroke="#C5B09B" stroke-width="0.65" />
+            <path d="M -6 -4 C -3 -9, 4 -8, 6 -3 C 9 1, 5 7, 0 7 C -5 8, -9 3, -6 -2 Z" fill="#ECDCCB" stroke="#B79E88" stroke-width="0.65" />
+            <path d="M -3 -2 C -1 -5, 3 -4, 4 -1 C 4 2, 1 4, -2 3 C -4 2, -4 -1, -3 -2 Z" fill="#D5BEA8" />
+            <path d="M -1 -1 Q 1 -2, 1.5 0.5 Q 0 2, -1.2 0.5" fill="none" stroke="#B2967D" stroke-width="0.65" />
+          </g>
+
+          <!-- Secondary Ivory Garden Rose (Lower — ruffled petals) -->
+          <g transform="translate(64, 78) scale(0.72)">
+            <path d="M -19 -3 C -20 -13, -8 -21, 2 -18 C 13 -20, 21 -9, 17 2 C 20 12, 10 20, -1 18 C -12 20, -20 9, -18 -1 Z" fill="url(#rose-petal-outer)" stroke="#D5C5B4" stroke-width="0.85" />
+            <path d="M -13 -6 C -9 -15, 4 -15, 11 -7 C 16 0, 11 12, 1 13 C -9 14, -16 5, -13 -6 Z" fill="url(#rose-petal-mid)" stroke="#CAB6A2" stroke-width="0.85" />
+            <path d="M -8 -4 C -4 -10, 5 -9, 8 -3 C 10 3, 5 9, -1 9 C -7 9, -10 2, -8 -4 Z" fill="#FAF4EC" stroke="#C1AC97" stroke-width="0.85" />
+            <path d="M -3.5 -2 C -1 -5, 3.5 -4, 4.5 -0.5 C 4.5 2.5, 1.5 4.5, -1.5 4 C -4 3.5, -5 0.5, -3.5 -2 Z" fill="#DEC7B1" stroke="#B39881" stroke-width="0.85" />
+          </g>
+
+          <!-- Tiny Rosebud -->
+          <g transform="translate(65, 97) scale(0.45)">
+            <circle cx="0" cy="0" r="18" fill="url(#rose-petal-outer)" />
+            <path d="M -10 -5 C -4 -13, 8 -12, 11 -3 C 12 4, 5 11, -3 10 C -10 9, -13 1, -10 -5 Z" fill="#EFE3D5" stroke="#C4B09C" stroke-width="1" />
+            <circle cx="0" cy="0" r="4.5" fill="#D5BFA8" />
+          </g>
+        </g>
+      </symbol>
+
+      <!-- REUSABLE CALLA LILY PAIR + CHAMPAGNE SATIN BOW (Matches hero right & countdown florals) -->
+      <symbol id="sym-calla-bow" viewBox="0 0 180 220">
+        <g filter="url(#shadow-soft)">
+          <!-- Slender Green Stems -->
+          <path d="M 102 104 C 103 142, 108 182, 114 218" stroke="url(#stem-green)" stroke-width="6.2" stroke-linecap="round" fill="none" />
+          <path d="M 118 118 C 110 152, 102 184, 96 218" stroke="url(#stem-green)" stroke-width="5.6" stroke-linecap="round" fill="none" />
+
+          <!-- White Calla Lily (Upper Left) -->
+          <g transform="translate(88, 62) rotate(-14)">
+            <!-- Outer Spathe -->
+            <path d="M -4 46 C -10 24, -28 2, -26 -18 C -24 -36, -6 -44, 14 -38 C 28 -33, 30 -16, 22 -2 C 13 13, 6 28, 3 46 Z" fill="url(#calla-white-outer)" stroke="#DCD3C7" stroke-width="0.7" />
+            <!-- Inner Throat Shadow -->
+            <path d="M -2 38 C -8 18, -18 -2, -12 -18 C -6 -30, 12 -30, 14 -16 C 16 -2, 5 18, 2 38 Z" fill="url(#calla-white-inner)" opacity="0.65" />
+            <!-- Front Curled Lip -->
+            <path d="M -26 -16 C -16 -26, -4 -14, 1 8 C 4 22, 4 36, 2 46 C -4 34, -8 14, -18 -2 C -23 -9, -27 -12, -26 -16 Z" fill="#FFFFFF" opacity="0.92" />
+            <!-- Golden Spadix -->
+            <path d="M -1 12 C -2 0, -1 -12, 2 -20" stroke="url(#spadix-gold)" stroke-width="4.2" stroke-linecap="round" />
+          </g>
+
+          <!-- Deep Burgundy Calla Lily (Lower Right) -->
+          <g transform="translate(128, 86) rotate(18)">
+            <path d="M -3 40 C -8 22, -24 4, -22 -14 C -20 -31, -4 -39, 14 -34 C 27 -30, 32 -16, 24 -3 C 14 11, 5 24, 3 40 Z" fill="url(#calla-burg-outer)" />
+            <path d="M -2 33 C -7 16, -15 -2, -10 -15 C -5 -26, 10 -26, 12 -14 C 14 -2, 4 15, 2 33 Z" fill="url(#calla-burg-inner)" opacity="0.85" />
+            <path d="M -22 -12 C -13 -22, -2 -11, 1 8 C 3 20, 3 32, 1 40 C -5 30, -9 12, -17 -2 C -20 -7, -23 -9, -22 -12 Z" fill="#7D2938" opacity="0.78" />
+            <path d="M -1 11 C -2 0, -1 -10, 2 -17" stroke="url(#spadix-gold)" stroke-width="3.6" stroke-linecap="round" />
+          </g>
+
+          <!-- Champagne Satin Ribbon Bow -->
+          <g transform="translate(105, 142) rotate(14)">
+            <!-- Left Swallowtail -->
+            <path d="M -4 4 C -18 22, -38 42, -56 58 L -42 56 L -38 68 C -22 48, -10 26, 2 8 Z" fill="url(#ribbon-champagne-2)" />
+            <!-- Right Swallowtail -->
+            <path d="M 4 4 C 18 20, 36 38, 52 54 L 38 52 L 34 64 C 20 46, 8 24, -2 8 Z" fill="url(#ribbon-champagne-1)" />
+            <!-- Left Bow Loop -->
+            <path d="M -3 0 C -20 -24, -48 -24, -44 -2 C -41 12, -18 14, -3 4 Z" fill="url(#ribbon-champagne-1)" stroke="#CBB69D" stroke-width="0.6" />
+            <path d="M -6 1 C -19 -10, -34 -10, -34 -1 C -34 5, -18 7, -6 2 Z" fill="#BFA68A" opacity="0.52" />
+            <!-- Right Bow Loop -->
+            <path d="M 3 0 C 20 -24, 48 -24, 44 -2 C 41 12, 18 14, 3 4 Z" fill="url(#ribbon-champagne-2)" stroke="#CBB69D" stroke-width="0.6" />
+            <path d="M 6 1 C 19 -10, 34 -10, 34 -1 C 34 5, 18 7, 6 2 Z" fill="#B59B7E" opacity="0.48" />
+            <!-- Center Pinched Satin Knot -->
+            <rect x="-7" y="-6.5" width="14" height="13" rx="4.5" fill="url(#ribbon-champagne-1)" stroke="#C2AB91" stroke-width="0.6" />
+            <path d="M -5 -2 Q 0 1 5 -2 M -5 2 Q 0 4 5 2" stroke="#B79E83" stroke-width="0.7" fill="none" opacity="0.6" />
+          </g>
+        </g>
+      </symbol>
+
+      <!-- REUSABLE HORIZONTAL CALLA LILIES (Matches countdown maroon plaque bottom accent) -->
+      <symbol id="sym-calla-horizontal" viewBox="0 0 210 72">
+        <g filter="url(#shadow-soft)">
+          <!-- Slim horizontal green stems -->
+          <path d="M 8 42 C 48 40, 88 38, 126 36" stroke="url(#stem-green)" stroke-width="4.4" stroke-linecap="round" fill="none" />
+          <path d="M 16 48 C 52 46, 86 44, 118 46" stroke="url(#stem-green)" stroke-width="4.0" stroke-linecap="round" fill="none" />
+          <!-- White Calla Lily -->
+          <g transform="translate(154, 30) rotate(78) scale(0.76)">
+            <path d="M -4 44 C -10 24, -28 2, -26 -18 C -24 -36, -6 -44, 14 -38 C 28 -33, 30 -16, 22 -2 C 13 13, 6 28, 3 44 Z" fill="url(#calla-white-outer)" />
+            <path d="M -2 36 C -8 18, -18 -2, -12 -18 C -6 -30, 12 -30, 14 -16 C 16 -2, 5 18, 2 36 Z" fill="url(#calla-white-inner)" opacity="0.62" />
+            <path d="M -1 12 C -2 0, -1 -12, 2 -20" stroke="url(#spadix-gold)" stroke-width="4.2" stroke-linecap="round" />
+          </g>
+          <!-- Deep Burgundy Calla Lily -->
+          <g transform="translate(132, 50) rotate(102) scale(0.68)">
+            <path d="M -3 40 C -8 22, -24 4, -22 -14 C -20 -31, -4 -39, 14 -34 C 27 -30, 32 -16, 24 -3 C 14 11, 5 24, 3 40 Z" fill="url(#calla-burg-outer)" />
+            <path d="M -2 33 C -7 16, -15 -2, -10 -15 C -5 -26, 10 -26, 12 -14 C 14 -2, 4 15, 2 33 Z" fill="url(#calla-burg-inner)" opacity="0.82" />
+            <path d="M -1 11 C -2 0, -1 -10, 2 -17" stroke="url(#spadix-gold)" stroke-width="3.6" stroke-linecap="round" />
+          </g>
+        </g>
+      </symbol>
+
+      <!-- REUSABLE DEEP OLIVE SATIN RIBBON BOW + CENTRAL PEARL (Matches Doa Buat Pengantin plaque!) -->
+      <symbol id="sym-olive-bow" viewBox="0 0 260 118">
+        <g filter="url(#shadow-deep)">
+          <!-- Left Satin Tail -->
+          <path d="M 118 24 C 86 42, 46 66, 20 84 L 28 112 C 62 90, 96 62, 124 38 Z" fill="url(#ribbon-olive-tail-l)" />
+          <path d="M 24 85 C 58 64, 92 42, 119 27" stroke="#808A52" stroke-width="0.9" opacity="0.45" fill="none" />
+          <path d="M 29 107 C 63 85, 96 59, 123 36" stroke="#1E220E" stroke-width="1.2" opacity="0.55" fill="none" />
+
+          <!-- Right Satin Tail -->
+          <path d="M 142 24 C 174 42, 214 66, 240 84 L 232 112 C 198 90, 164 62, 136 38 Z" fill="url(#ribbon-olive-tail-r)" />
+          <path d="M 236 85 C 202 64, 168 42, 141 27" stroke="#808A52" stroke-width="0.9" opacity="0.45" fill="none" />
+          <path d="M 231 107 C 197 85, 164 59, 137 36" stroke="#1E220E" stroke-width="1.2" opacity="0.55" fill="none" />
+
+          <!-- Left Bow Loop -->
+          <path d="M 122 24 C 98 2, 56 4, 48 24 C 42 38, 72 52, 120 34 Z" fill="url(#ribbon-olive-loop)" />
+          <path d="M 116 26 C 95 14, 68 17, 64 26 C 61 33, 84 39, 114 31 Z" fill="#232711" opacity="0.65" />
+
+          <!-- Right Bow Loop -->
+          <path d="M 138 24 C 162 2, 204 4, 212 24 C 218 38, 188 52, 140 34 Z" fill="url(#ribbon-olive-loop)" />
+          <path d="M 144 26 C 165 14, 192 17, 196 26 C 199 33, 176 39, 146 31 Z" fill="#232711" opacity="0.65" />
+
+          <!-- Center Knot Shadow Base -->
+          <ellipse cx="130" cy="28" rx="18" ry="15" fill="#292D15" />
+
+          <!-- Central Luminous 3D Pearl -->
+          <use href="#sym-pearl" x="112" y="10" width="36" height="36" />
+        </g>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- =======================================================================
+       INTERACTIVE STUDIO TOOLBAR (Hidden in Print / PDF / PNG Export)
+       ======================================================================= -->
+  <header class="studio-bar">
+    <div class="studio-brand">
+      <span class="studio-badge">A6 · 105×148mm</span>
+      <div class="studio-title">
+        <h1>Fikri &amp; Alya — Tabletop QR Card Suite</h1>
+        <p>Matched to walimatulurusfikridanalya.my.canva.site · QR links to <strong id="header-url-preview">https://fikrialyagallery.memoira.art</strong></p>
+      </div>
+    </div>
+    <div class="studio-actions">
+      <button class="btn" id="toggle-editor-btn" type="button">Edit Text &amp; QR URL</button>
+      <button class="btn btn-primary" type="button" onclick="printCard('all')">Print / Save All 3 (A6 PDF)</button>
+      <button class="btn btn-maroon" type="button" onclick="printCard('ivory')">Print Ivory</button>
+      <button class="btn btn-maroon" type="button" onclick="printCard('maroon')">Print Maroon</button>
+      <button class="btn btn-maroon" type="button" onclick="printCard('olive')">Print Olive</button>
+    </div>
+  </header>
+
+  <section class="editor-panel" id="editor-panel">
+    <div class="editor-grid">
+      <div class="field">
+        <label for="in-eyebrow">Top Eyebrow</label>
+        <input id="in-eyebrow" type="text" value="THE WEDDING OF" />
+      </div>
+      <div class="field">
+        <label for="in-groom">Groom Name</label>
+        <input id="in-groom" type="text" value="Fikri" />
+      </div>
+      <div class="field">
+        <label for="in-bride">Bride Name</label>
+        <input id="in-bride" type="text" value="Alya" />
+      </div>
+      <div class="field">
+        <label for="in-date">Event Date</label>
+        <input id="in-date" type="text" value="19 December 2026" />
+      </div>
+      <div class="field">
+        <label for="in-venue">Venue</label>
+        <input id="in-venue" type="text" value="Sentosa Villa Resort" />
+      </div>
+      <div class="field">
+        <label for="in-cta-title">CTA Script Title</label>
+        <input id="in-cta-title" type="text" value="Share the Love" />
+      </div>
+      <div class="field">
+        <label for="in-cta-body">Instructions</label>
+        <input id="in-cta-body" type="text" value="Scan to sign our Digital Guestbook, share photos &amp; try the Photobooth" />
+      </div>
+      <div class="field">
+        <label for="in-hashtag">Hashtag</label>
+        <input id="in-hashtag" type="text" value="#FikriAlya" />
+      </div>
+      <div class="field">
+        <label for="in-url">QR Destination URL</label>
+        <input id="in-url" type="text" value="https://fikrialyagallery.memoira.art" />
+      </div>
+    </div>
+  </section>
+
+  <!-- =======================================================================
+       ALL 3 A6 PORTRAIT TABLETOP CARD VARIATIONS
+       ======================================================================= -->
+  <main class="gallery-stage">
+
+    <!-- ===================================================================
+         VARIATION 1: WARM IVORY SCALLOPED STATIONERY
+         =================================================================== -->
+    <article class="card-showcase" data-card-id="ivory">
+      <div class="card-meta">
+        <div>
+          <div class="card-meta-label">01 · Warm Ivory Scalloped Stationery</div>
+          <div class="card-meta-sub">Cotton ivory · Olive scalloped border · Calla lilies &amp; pearls</div>
+        </div>
+        <button class="card-print-btn" type="button" onclick="printCard('ivory')">Print A6</button>
+      </div>
+
+      <div class="a6-card card-ivory">
+        <!-- Tactile Cotton Paper Grain -->
+        <svg class="card-layer-texture" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <rect width="105" height="148" fill="#F5F2EF" filter="url(#tex-cotton)" opacity="0.24" />
+        </svg>
+
+        <!-- Scalloped Double Olive-Green Stationery Frame (matches hero right card!) -->
+        <svg class="card-layer-frame" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <g fill="none" stroke-linejoin="round" stroke-linecap="round">
+            <!-- Outer Scalloped Wave Border -->
+            <path
+              d="M 11.5 5.2
+                 C 16 2.8, 22 2.8, 26.5 5.2
+                 C 31 7.4, 37 7.4, 41.5 5.2
+                 C 46 2.8, 59 2.8, 63.5 5.2
+                 C 68 7.4, 74 7.4, 78.5 5.2
+                 C 83 2.8, 89 2.8, 93.5 5.2
+                 C 97.8 7.5, 100.2 11.2, 99.6 16.5
+                 C 98.4 21.8, 98.4 27.6, 99.8 33
+                 C 101.2 38.4, 101.2 44.2, 99.8 49.6
+                 C 98.4 55, 98.4 60.8, 99.8 66.2
+                 C 101.2 71.6, 101.2 77.4, 99.8 82.8
+                 C 98.4 88.2, 98.4 94, 99.8 99.4
+                 C 101.2 104.8, 101.2 110.6, 99.8 116
+                 C 98.4 121.4, 98.4 127.2, 99.6 131.5
+                 C 100.2 136.8, 97.8 140.5, 93.5 142.8
+                 C 89 145.2, 83 145.2, 78.5 142.8
+                 C 74 140.6, 68 140.6, 63.5 142.8
+                 C 59 145.2, 46 145.2, 41.5 142.8
+                 C 37 140.6, 31 140.6, 26.5 142.8
+                 C 22 145.2, 16 145.2, 11.5 142.8
+                 C 7.2 140.5, 4.8 136.8, 5.4 131.5
+                 C 6.6 127.2, 6.6 121.4, 5.2 116
+                 C 3.8 110.6, 3.8 104.8, 5.2 99.4
+                 C 6.6 94, 6.6 88.2, 5.2 82.8
+                 C 3.8 77.4, 3.8 71.6, 5.2 66.2
+                 C 6.6 60.8, 6.6 55, 5.2 49.6
+                 C 3.8 44.2, 3.8 38.4, 5.2 33
+                 C 6.6 27.6, 6.6 21.8, 5.4 16.5
+                 C 4.8 11.2, 7.2 7.5, 11.5 5.2 Z"
+              stroke="#5C5E35"
+              stroke-width="0.62"
+            />
+            <!-- Inner Parallel Hairline Scallop -->
+            <path
+              transform="translate(52.5 74) scale(0.968 0.976) translate(-52.5 -74)"
+              d="M 11.5 5.2
+                 C 16 2.8, 22 2.8, 26.5 5.2
+                 C 31 7.4, 37 7.4, 41.5 5.2
+                 C 46 2.8, 59 2.8, 63.5 5.2
+                 C 68 7.4, 74 7.4, 78.5 5.2
+                 C 83 2.8, 89 2.8, 93.5 5.2
+                 C 97.8 7.5, 100.2 11.2, 99.6 16.5
+                 C 98.4 21.8, 98.4 27.6, 99.8 33
+                 C 101.2 38.4, 101.2 44.2, 99.8 49.6
+                 C 98.4 55, 98.4 60.8, 99.8 66.2
+                 C 101.2 71.6, 101.2 77.4, 99.8 82.8
+                 C 98.4 88.2, 98.4 94, 99.8 99.4
+                 C 101.2 104.8, 101.2 110.6, 99.8 116
+                 C 98.4 121.4, 98.4 127.2, 99.6 131.5
+                 C 100.2 136.8, 97.8 140.5, 93.5 142.8
+                 C 89 145.2, 83 145.2, 78.5 142.8
+                 C 74 140.6, 68 140.6, 63.5 142.8
+                 C 59 145.2, 46 145.2, 41.5 142.8
+                 C 37 140.6, 31 140.6, 26.5 142.8
+                 C 22 145.2, 16 145.2, 11.5 142.8
+                 C 7.2 140.5, 4.8 136.8, 5.4 131.5
+                 C 6.6 127.2, 6.6 121.4, 5.2 116
+                 C 3.8 110.6, 3.8 104.8, 5.2 99.4
+                 C 6.6 94, 6.6 88.2, 5.2 82.8
+                 C 3.8 77.4, 3.8 71.6, 5.2 66.2
+                 C 6.6 60.8, 6.6 55, 5.2 49.6
+                 C 3.8 44.2, 3.8 38.4, 5.2 33
+                 C 6.6 27.6, 6.6 21.8, 5.4 16.5
+                 C 4.8 11.2, 7.2 7.5, 11.5 5.2 Z"
+              stroke="#5C5E35"
+              stroke-width="0.24"
+              opacity="0.72"
+            />
+          </g>
+        </svg>
+
+        <!-- Botanical Art & Glossy 3D Pearls (Kept cleanly on outer corners, zero text overlap) -->
+        <svg class="card-layer-art" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <!-- Top-Left Bridal Bouquet Cluster -->
+          <use href="#sym-corner-bouquet" x="-7" y="-5" width="37" height="47" />
+          <!-- Bottom-Right Calla Lilies + Champagne Satin Ribbon Bow (tucked cleanly in lower corner) -->
+          <use href="#sym-calla-bow" x="78.5" y="118.5" width="28" height="34" />
+          <!-- Subtle 3D Cream Pearls in clean outer margins -->
+          <use href="#sym-pearl" x="88" y="13" width="4.4" height="4.4" />
+          <use href="#sym-pearl" x="92.5" y="21" width="2.8" height="2.8" />
+          <use href="#sym-pearl" x="10.5" y="129.5" width="3.8" height="3.8" />
+          <use href="#sym-pearl" x="16.2" y="135.2" width="2.5" height="2.5" />
+        </svg>
+
+        <!-- Foreground Typography & Crisp Vector QR -->
+        <div class="card-layer-content">
+          <div class="top-block">
+            <div class="eyebrow font-serif" data-bind="eyebrow">THE WEDDING OF</div>
+            <div class="couple-names font-script">
+              <span data-bind="groom">Fikri</span><span class="amp">&amp;</span><span data-bind="bride">Alya</span>
+            </div>
+            <div class="event-meta font-serif" data-bind="date-upper">19 DECEMBER 2026</div>
+            <div class="event-meta-venue" data-bind="venue">Sentosa Villa Resort</div>
+            <div class="hairline-divider"></div>
+          </div>
+
+          <div class="qr-stage">
+            <div class="qr-frame">
+              <img class="qr-img" data-qr-theme="ivory" alt="QR Code to Fikri & Alya Digital Guestbook" />
+            </div>
+            <div class="scan-pill">SCAN ME</div>
+          </div>
+
+          <div class="cta-block">
+            <div class="cta-script font-script" data-bind="cta-title">Share the Love</div>
+            <p class="cta-body font-serif" data-bind="cta-body">
+              Scan to sign our Digital Guestbook, share photos &amp; try the Photobooth
+            </p>
+            <div class="feature-row">
+              <span class="feature-pill">Leave Wishes</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Share Photos</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Photobooth</span>
+            </div>
+          </div>
+
+          <div class="card-footer font-serif">
+            <div class="footer-url" data-bind="url-display">fikrialyagallery.memoira.art</div>
+            <div class="footer-tag" data-bind="hashtag">#FikriAlya</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================
+         VARIATION 2: DEEP OXBLOOD MAROON (Pebbled Cardstock + Scalloped Ivory QR)
+         =================================================================== -->
+    <article class="card-showcase" data-card-id="maroon">
+      <div class="card-meta">
+        <div>
+          <div class="card-meta-label">02 · Deep Oxblood Maroon</div>
+          <div class="card-meta-sub">Pebbled maroon · White frame · Pearls &amp; ivory scalloped QR</div>
+        </div>
+        <button class="card-print-btn" type="button" onclick="printCard('maroon')">Print A6</button>
+      </div>
+
+      <div class="a6-card card-maroon">
+        <!-- Tactile Pebbled Maroon Cardstock Grain -->
+        <svg class="card-layer-texture" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <rect width="105" height="148" fill="#491B1D" filter="url(#tex-pebbled)" opacity="0.62" />
+        </svg>
+
+        <!-- Double Crisp White Inner Border (Matches hero maroon Fikri & Alya card!) -->
+        <svg class="card-layer-frame" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <rect x="4.5" y="4.5" width="96" height="139" fill="none" stroke="#FFFFFF" stroke-width="0.52" opacity="0.92" />
+          <rect x="6.1" y="6.1" width="92.8" height="135.8" fill="none" stroke="#FFFFFF" stroke-width="0.2" opacity="0.48" />
+        </svg>
+
+        <!-- Bridal Bouquet Corner, Horizontal Calla Lilies & Scattered Pearl Studs -->
+        <svg class="card-layer-art" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <!-- Top-Left Floral Cluster draping over frame just like website! -->
+          <use href="#sym-corner-bouquet" x="-6" y="-5" width="38" height="48.5" />
+          <!-- Bottom-Right Horizontal Calla Lilies (matching countdown plaque!) -->
+          <use href="#sym-calla-horizontal" x="58" y="128.5" width="46" height="16" />
+          <!-- Scattered Glossy 3D Pearl Studs (signature hero card motif — clear of all text) -->
+          <use href="#sym-pearl" x="87" y="13.5" width="4.8" height="4.8" />
+          <use href="#sym-pearl" x="93" y="29" width="2.8" height="2.8" />
+          <use href="#sym-pearl" x="11.5" y="64" width="3.9" height="3.9" />
+          <use href="#sym-pearl" x="90" y="75" width="3.5" height="3.5" />
+          <use href="#sym-pearl" x="10.5" y="130" width="4.2" height="4.2" />
+          <use href="#sym-pearl" x="17.5" y="135.5" width="2.6" height="2.6" />
+        </svg>
+
+        <!-- Foreground Typography & Elevated Scalloped Ivory QR Plaque -->
+        <div class="card-layer-content">
+          <div class="top-block">
+            <div class="eyebrow font-serif" data-bind="eyebrow">THE WEDDING OF</div>
+            <div class="couple-names font-script">
+              <span data-bind="groom">Fikri</span><span class="amp">&amp;</span><span data-bind="bride">Alya</span>
+            </div>
+            <div class="event-meta font-serif">
+              <span data-bind="date-upper">19 DECEMBER 2026</span> &nbsp;·&nbsp; <span data-bind="venue-upper">SENTOSA VILLA RESORT</span>
+            </div>
+          </div>
+
+          <!-- Symmetrical Scalloped Ivory Plaque Inset (fusing both hero cards!) -->
+          <div class="ivory-plaque">
+            <svg class="ivory-plaque-svg" viewBox="0 0 128 124" preserveAspectRatio="none">
+              <path
+                d="M 16 7.5
+                   C 24 2.8, 34 2.8, 42 7.5
+                   C 49.5 11.8, 56.5 11.8, 64 7.5
+                   C 71.5 2.8, 82.5 2.8, 90 7.5
+                   C 97.5 11.8, 104.5 11.8, 112 7.5
+                   C 118.5 7.5, 122 12, 120.5 18.5
+                   C 118.2 27, 118.2 35, 120.8 43
+                   C 123.6 51.5, 123.6 60.5, 120.8 69
+                   C 118.2 77, 118.2 85, 120.8 93
+                   C 123.2 100.5, 122.5 107.5, 119 113
+                   C 116.5 117, 113 118.5, 108 117
+                   C 100.5 114.6, 93.5 114.6, 86 117.5
+                   C 78.5 121.2, 69.5 121.2, 64 117.5
+                   C 58.5 121.2, 49.5 121.2, 42 117.5
+                   C 34.5 114.6, 27.5 114.6, 20 117
+                   C 15 118.5, 11.5 117, 9 113
+                   C 5.5 107.5, 4.8 100.5, 7.2 93
+                   C 9.8 85, 9.8 77, 7.2 69
+                   C 4.4 60.5, 4.4 51.5, 7.2 43
+                   C 9.8 35, 9.8 27, 7.5 18.5
+                   C 6 12, 9.5 7.5, 16 7.5 Z"
+                fill="#F7F4F0"
+              />
+              <path
+                transform="translate(64 62) scale(0.935 0.935) translate(-64 -62)"
+                d="M 16 7.5
+                   C 24 2.8, 34 2.8, 42 7.5
+                   C 49.5 11.8, 56.5 11.8, 64 7.5
+                   C 71.5 2.8, 82.5 2.8, 90 7.5
+                   C 97.5 11.8, 104.5 11.8, 112 7.5
+                   C 118.5 7.5, 122 12, 120.5 18.5
+                   C 118.2 27, 118.2 35, 120.8 43
+                   C 123.6 51.5, 123.6 60.5, 120.8 69
+                   C 118.2 77, 118.2 85, 120.8 93
+                   C 123.2 100.5, 122.5 107.5, 119 113
+                   C 116.5 117, 113 118.5, 108 117
+                   C 100.5 114.6, 93.5 114.6, 86 117.5
+                   C 78.5 121.2, 69.5 121.2, 64 117.5
+                   C 58.5 121.2, 49.5 121.2, 42 117.5
+                   C 34.5 114.6, 27.5 114.6, 20 117
+                   C 15 118.5, 11.5 117, 9 113
+                   C 5.5 107.5, 4.8 100.5, 7.2 93
+                   C 9.8 85, 9.8 77, 7.2 69
+                   C 4.4 60.5, 4.4 51.5, 7.2 43
+                   C 9.8 35, 9.8 27, 7.5 18.5
+                   C 6 12, 9.5 7.5, 16 7.5 Z"
+                fill="none"
+                stroke="#5C5E35"
+                stroke-width="1.25"
+              />
+            </svg>
+            <div class="ivory-plaque-inner">
+              <div class="qr-frame">
+                <img class="qr-img" data-qr-theme="maroon" alt="QR Code to Fikri & Alya Digital Guestbook" />
+              </div>
+              <div class="plaque-caption">SCAN THE QR CODE</div>
+            </div>
+          </div>
+
+          <div class="cta-block">
+            <div class="cta-script font-script" data-bind="cta-title">Share the Love</div>
+            <p class="cta-body font-serif" data-bind="cta-body">
+              Scan to sign our Digital Guestbook, share photos &amp; try the Photobooth
+            </p>
+            <div class="feature-row">
+              <span class="feature-pill">Leave Wishes</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Share Photos</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Photobooth</span>
+            </div>
+          </div>
+
+          <div class="card-footer font-serif">
+            <div class="footer-url" data-bind="url-display">fikrialyagallery.memoira.art</div>
+            <div class="footer-tag" data-bind="hashtag">#FikriAlya</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================
+         VARIATION 3: DEEP OLIVE VELVET (Ornate Baroque Cream Frame + Satin Bow)
+         =================================================================== -->
+    <article class="card-showcase" data-card-id="olive">
+      <div class="card-meta">
+        <div>
+          <div class="card-meta-label">03 · Deep Olive Velvet</div>
+          <div class="card-meta-sub">Olive velvet · Ornate cream baroque frame · Satin bow &amp; pearl</div>
+        </div>
+        <button class="card-print-btn" type="button" onclick="printCard('olive')">Print A6</button>
+      </div>
+
+      <div class="a6-card card-olive">
+        <!-- Tactile Deep Olive Velvet Texture -->
+        <svg class="card-layer-texture" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <rect width="105" height="148" fill="#3A3F21" filter="url(#tex-velvet)" opacity="0.58" />
+        </svg>
+
+        <!-- Ornate Baroque Layered Cream Frame (Matches Doa Buat Pengantin plaque!) -->
+        <svg class="card-layer-frame" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <!-- Outer Cream Border Silhouette -->
+          <path
+            d="M 52.5 5.6
+               C 59 10.2, 68 10.6, 76.5 11.2
+               C 85.5 11.8, 92.2 15.8, 93 23.8
+               C 93.6 30.2, 95.8 33.4, 98.8 36.2
+               C 96.4 40.5, 95.2 46.5, 95.2 54
+               L 95.2 96
+               C 95.2 103.5, 96.4 109.5, 98.8 113.8
+               C 95.8 116.6, 93.6 119.8, 93 126.2
+               C 92.2 134.2, 85.5 137.8, 76.5 138.4
+               C 68 139, 59 139.8, 52.5 143.6
+               C 46 139.8, 37 139, 28.5 138.4
+               C 19.5 137.8, 12.8 134.2, 12 126.2
+               C 11.4 119.8, 9.2 116.6, 6.2 113.8
+               C 8.6 109.5, 9.8 103.5, 9.8 96
+               L 9.8 54
+               C 9.8 46.5, 8.6 40.5, 6.2 36.2
+               C 9.2 33.4, 11.4 30.2, 12 23.8
+               C 12.8 15.8, 19.5 11.8, 28.5 11.2
+               C 37 10.6, 46 10.2, 52.5 5.6 Z"
+            fill="none"
+            stroke="#F5F2EF"
+            stroke-width="2.1"
+            filter="url(#shadow-deep)"
+          />
+          <!-- Inner Refined Olive-Gold Accent Stroke inside Cream Band -->
+          <path
+            d="M 52.5 5.6
+               C 59 10.2, 68 10.6, 76.5 11.2
+               C 85.5 11.8, 92.2 15.8, 93 23.8
+               C 93.6 30.2, 95.8 33.4, 98.8 36.2
+               C 96.4 40.5, 95.2 46.5, 95.2 54
+               L 95.2 96
+               C 95.2 103.5, 96.4 109.5, 98.8 113.8
+               C 95.8 116.6, 93.6 119.8, 93 126.2
+               C 92.2 134.2, 85.5 137.8, 76.5 138.4
+               C 68 139, 59 139.8, 52.5 143.6
+               C 46 139.8, 37 139, 28.5 138.4
+               C 19.5 137.8, 12.8 134.2, 12 126.2
+               C 11.4 119.8, 9.2 116.6, 6.2 113.8
+               C 8.6 109.5, 9.8 103.5, 9.8 96
+               L 9.8 54
+               C 9.8 46.5, 8.6 40.5, 6.2 36.2
+               C 9.2 33.4, 11.4 30.2, 12 23.8
+               C 12.8 15.8, 19.5 11.8, 28.5 11.2
+               C 37 10.6, 46 10.2, 52.5 5.6 Z"
+            fill="none"
+            stroke="#9B9678"
+            stroke-width="0.34"
+          />
+          <!-- Inner Fine Ivory Echo Frame -->
+          <path
+            transform="translate(52.5 74.6) scale(0.925 0.945) translate(-52.5 -74.6)"
+            d="M 52.5 5.6
+               C 59 10.2, 68 10.6, 76.5 11.2
+               C 85.5 11.8, 92.2 15.8, 93 23.8
+               C 93.6 30.2, 95.8 33.4, 98.8 36.2
+               C 96.4 40.5, 95.2 46.5, 95.2 54
+               L 95.2 96
+               C 95.2 103.5, 96.4 109.5, 98.8 113.8
+               C 95.8 116.6, 93.6 119.8, 93 126.2
+               C 92.2 134.2, 85.5 137.8, 76.5 138.4
+               C 68 139, 59 139.8, 52.5 143.6
+               C 46 139.8, 37 139, 28.5 138.4
+               C 19.5 137.8, 12.8 134.2, 12 126.2
+               C 11.4 119.8, 9.2 116.6, 6.2 113.8
+               C 8.6 109.5, 9.8 103.5, 9.8 96
+               L 9.8 54
+               C 9.8 46.5, 8.6 40.5, 6.2 36.2
+               C 9.2 33.4, 11.4 30.2, 12 23.8
+               C 12.8 15.8, 19.5 11.8, 28.5 11.2
+               C 37 10.6, 46 10.2, 52.5 5.6 Z"
+            fill="none"
+            stroke="#F5F2EF"
+            stroke-width="0.26"
+            opacity="0.45"
+          />
+        </svg>
+
+        <!-- Signature Top Olive Satin Bow + Luminous Pearl + Subtle Bottom Pearls -->
+        <svg class="card-layer-art" viewBox="0 0 105 148" preserveAspectRatio="none">
+          <use href="#sym-olive-bow" x="19" y="0.6" width="67" height="25.5" />
+          <!-- Delicate corner pearl accents -->
+          <use href="#sym-pearl" x="12.5" y="129.5" width="3.4" height="3.4" />
+          <use href="#sym-pearl" x="89" y="129.5" width="3.4" height="3.4" />
+          <use href="#sym-pearl" x="50.7" y="141.6" width="3.6" height="3.6" />
+        </svg>
+
+        <!-- Foreground Typography & Crisp Warm Ivory QR Inset -->
+        <div class="card-layer-content">
+          <div class="top-block">
+            <div class="eyebrow font-serif" data-bind="eyebrow">THE WEDDING OF</div>
+            <div class="couple-names font-script">
+              <span data-bind="groom">Fikri</span><span class="amp">&amp;</span><span data-bind="bride">Alya</span>
+            </div>
+            <div class="event-meta font-serif">
+              <span data-bind="date-upper">19 DECEMBER 2026</span> &nbsp;·&nbsp; <span data-bind="venue-upper">SENTOSA VILLA RESORT</span>
+            </div>
+          </div>
+
+          <div class="qr-inset">
+            <div class="qr-frame">
+              <img class="qr-img" data-qr-theme="olive" alt="QR Code to Fikri & Alya Digital Guestbook" />
+            </div>
+            <div class="plaque-caption">SCAN TO SHARE MEMORIES</div>
+          </div>
+
+          <div class="cta-block">
+            <div class="cta-script font-script" data-bind="cta-title">Share the Love</div>
+            <p class="cta-body font-serif" data-bind="cta-body">
+              Scan to sign our Digital Guestbook, share photos &amp; try the Photobooth
+            </p>
+            <div class="feature-row">
+              <span class="feature-pill">Leave Wishes</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Share Photos</span>
+              <span class="feature-dot"></span>
+              <span class="feature-pill">Photobooth</span>
+            </div>
+          </div>
+
+          <div class="card-footer font-serif">
+            <div class="footer-url" data-bind="url-display">fikrialyagallery.memoira.art</div>
+            <div class="footer-tag" data-bind="hashtag">#FikriAlya</div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+  </main>
+
+  <script>
+    /* =========================================================================
+       ISO/IEC 18004 QR CODE SVG GENERATOR (Error Correction Level M ~15%,
+       Optimal Mask Selection 0..7, Full 4-Module Quiet Zone)
+       100% local, vector-sharp, zero external network dependencies.
+       ========================================================================= */
+    const QR_M_TABLE = {
+      1: { size: 21, totalData: 16,  ecPerBlock: 10, g1Blocks: 1, g1Data: 16, g2Blocks: 0, g2Data: 0,  align: [] },
+      2: { size: 25, totalData: 28,  ecPerBlock: 16, g1Blocks: 1, g1Data: 28, g2Blocks: 0, g2Data: 0,  align: [6, 18] },
+      3: { size: 29, totalData: 44,  ecPerBlock: 26, g1Blocks: 1, g1Data: 44, g2Blocks: 0, g2Data: 0,  align: [6, 22] },
+      4: { size: 33, totalData: 64,  ecPerBlock: 18, g1Blocks: 2, g1Data: 32, g2Blocks: 0, g2Data: 0,  align: [6, 26] },
+      5: { size: 37, totalData: 86,  ecPerBlock: 24, g1Blocks: 2, g1Data: 43, g2Blocks: 0, g2Data: 0,  align: [6, 30] },
+      6: { size: 41, totalData: 108, ecPerBlock: 16, g1Blocks: 4, g1Data: 27, g2Blocks: 0, g2Data: 0,  align: [6, 34] },
+      7: { size: 45, totalData: 124, ecPerBlock: 18, g1Blocks: 4, g1Data: 31, g2Blocks: 0, g2Data: 0,  align: [6, 22, 38] },
+      8: { size: 49, totalData: 154, ecPerBlock: 22, g1Blocks: 2, g1Data: 38, g2Blocks: 2, g2Data: 39, align: [6, 24, 42] },
+    };
+
+    const GF_EXP = new Uint8Array(512);
+    const GF_LOG = new Uint8Array(256);
+    (() => {
+      let x = 1;
+      for (let i = 0; i < 255; i++) {
+        GF_EXP[i] = x;
+        GF_LOG[x] = i;
+        x <<= 1;
+        if (x & 0x100) x ^= 0x11d;
+      }
+      for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
+    })();
+
+    function gfMul(a, b) {
+      return a && b ? GF_EXP[GF_LOG[a] + GF_LOG[b]] : 0;
+    }
+
+    function rsCompute(data, ecLen) {
+      let gen = new Uint8Array([1]);
+      for (let i = 0; i < ecLen; i++) {
+        const next = new Uint8Array(gen.length + 1);
+        const root = GF_EXP[i];
+        for (let j = 0; j < gen.length; j++) {
+          next[j] ^= gen[j];
+          next[j + 1] ^= gfMul(gen[j], root);
+        }
+        gen = next;
+      }
+      const msg = new Uint8Array(data.length + ecLen);
+      msg.set(data, 0);
+      for (let i = 0; i < data.length; i++) {
+        const coef = msg[i];
+        if (coef !== 0) {
+          for (let j = 0; j < gen.length; j++) {
+            msg[i + j] ^= gfMul(gen[j], coef);
+          }
+        }
+      }
+      return msg.slice(data.length);
+    }
+
+    function computeFormatBitsM(mask) {
+      // EC Level M = 0b00
+      const data = mask & 0x7;
+      let rem = data << 10;
+      for (let i = 14; i >= 10; i--) {
+        if ((rem >> i) & 1) rem ^= 0x537 << (i - 10);
+      }
+      return ((data << 10) | rem) ^ 0x5412;
+    }
+
+    function encodeQrMatrix(text) {
+      const bytes = new TextEncoder().encode(text);
+      let version = 0;
+      for (let v = 1; v <= 8; v++) {
+        if (bytes.length + 2 <= QR_M_TABLE[v].totalData) {
+          version = v;
+          break;
+        }
+      }
+      if (!version) throw new Error('QR URL too long for Version 1-8');
+      const vInfo = QR_M_TABLE[version];
+
+      // Build bit stream: byte mode (0100) + 8-bit length + UTF-8 payload
+      const bits = [];
+      const pushBits = (val, len) => {
+        for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1);
+      };
+      pushBits(0b0100, 4);
+      pushBits(bytes.length, 8);
+      for (let i = 0; i < bytes.length; i++) pushBits(bytes[i], 8);
+
+      const maxBits = vInfo.totalData * 8;
+      pushBits(0, Math.min(4, maxBits - bits.length));
+      while (bits.length % 8 !== 0) bits.push(0);
+
+      const dataBytes = new Uint8Array(vInfo.totalData);
+      for (let i = 0; i < bits.length / 8; i++) {
+        let b = 0;
+        for (let j = 0; j < 8; j++) b = (b << 1) | bits[i * 8 + j];
+        dataBytes[i] = b;
+      }
+      for (let i = bits.length / 8, toggle = false; i < vInfo.totalData; i++, toggle = !toggle) {
+        dataBytes[i] = toggle ? 0x11 : 0xec;
+      }
+
+      // Split into Group 1 & Group 2 blocks + RS EC codewords
+      const dataBlocks = [];
+      const ecBlocks = [];
+      let offset = 0;
+      for (let b = 0; b < vInfo.g1Blocks; b++) {
+        const blk = dataBytes.slice(offset, offset + vInfo.g1Data);
+        offset += vInfo.g1Data;
+        dataBlocks.push(blk);
+        ecBlocks.push(rsCompute(blk, vInfo.ecPerBlock));
+      }
+      for (let b = 0; b < vInfo.g2Blocks; b++) {
+        const blk = dataBytes.slice(offset, offset + vInfo.g2Data);
+        offset += vInfo.g2Data;
+        dataBlocks.push(blk);
+        ecBlocks.push(rsCompute(blk, vInfo.ecPerBlock));
+      }
+
+      const maxDataLen = Math.max(vInfo.g1Data, vInfo.g2Data);
+      const finalCW = [];
+      for (let i = 0; i < maxDataLen; i++) {
+        for (let b = 0; b < dataBlocks.length; b++) {
+          if (i < dataBlocks[b].length) finalCW.push(dataBlocks[b][i]);
+        }
+      }
+      for (let i = 0; i < vInfo.ecPerBlock; i++) {
+        for (let b = 0; b < ecBlocks.length; b++) {
+          finalCW.push(ecBlocks[b][i]);
+        }
+      }
+
+      const size = vInfo.size;
+      const base = Array.from({ length: size }, () => Array(size).fill(false));
+      const isFn = Array.from({ length: size }, () => Array(size).fill(false));
+      const setFn = (r, c, dark) => {
+        if (r >= 0 && r < size && c >= 0 && c < size) {
+          base[r][c] = dark;
+          isFn[r][c] = true;
+        }
+      };
+
+      const drawFinder = (row, col) => {
+        for (let dr = -1; dr <= 7; dr++) {
+          for (let dc = -1; dc <= 7; dc++) {
+            const r = row + dr, c = col + dc;
+            if (r < 0 || r >= size || c < 0 || c >= size) continue;
+            const inOuter = dr >= 0 && dr <= 6 && dc >= 0 && dc <= 6;
+            const onBorder = dr === 0 || dr === 6 || dc === 0 || dc === 6;
+            const inCenter = dr >= 2 && dr <= 4 && dc >= 2 && dc <= 4;
+            setFn(r, c, inOuter && (onBorder || inCenter));
+          }
+        }
+      };
+      drawFinder(0, 0);
+      drawFinder(0, size - 7);
+      drawFinder(size - 7, 0);
+
+      for (let i = 8; i < size - 8; i++) {
+        setFn(6, i, i % 2 === 0);
+        setFn(i, 6, i % 2 === 0);
+      }
+
+      const align = vInfo.align;
+      for (let i = 0; i < align.length; i++) {
+        for (let j = 0; j < align.length; j++) {
+          if (
+            (i === 0 && j === 0) ||
+            (i === 0 && j === align.length - 1) ||
+            (i === align.length - 1 && j === 0)
+          ) continue;
+          const cr = align[i], cc = align[j];
+          for (let dr = -2; dr <= 2; dr++) {
+            for (let dc = -2; dc <= 2; dc++) {
+              setFn(cr + dr, cc + dc, Math.max(Math.abs(dr), Math.abs(dc)) !== 1);
+            }
+          }
+        }
+      }
+
+      setFn(size - 8, 8, true);
+
+      // Reserve format info + Version 7/8 version info
+      for (let i = 0; i <= 8; i++) {
+        if (!isFn[8][i]) setFn(8, i, false);
+        if (!isFn[i][8]) setFn(i, 8, false);
+      }
+      for (let i = 0; i < 8; i++) {
+        setFn(8, size - 1 - i, false);
+        setFn(size - 1 - i, 8, false);
+      }
+      if (version >= 7) {
+        let vRem = version << 12;
+        for (let i = 17; i >= 12; i--) if ((vRem >> i) & 1) vRem ^= 0x1f25 << (i - 12);
+        const vBits = (version << 12) | vRem;
+        for (let i = 0; i < 18; i++) {
+          const bit = ((vBits >> i) & 1) === 1;
+          const a = Math.floor(i / 3), b = size - 11 + (i % 3);
+          setFn(a, b, bit);
+          setFn(b, a, bit);
+        }
+      }
+
+      // Place data bits
+      let bitIdx = 0;
+      const totalBits = finalCW.length * 8;
+      for (let right = size - 1; right >= 1; right -= 2) {
+        if (right === 6) right = 5;
+        for (let vert = 0; vert < size; vert++) {
+          for (let j = 0; j < 2; j++) {
+            const c = right - j;
+            const upward = ((right + 1) & 2) === 0;
+            const r = upward ? size - 1 - vert : vert;
+            if (!isFn[r][c] && bitIdx < totalBits) {
+              const byte = finalCW[bitIdx >> 3];
+              base[r][c] = ((byte >> (7 - (bitIdx & 7))) & 1) === 1;
+              bitIdx++;
+            }
+          }
+        }
+      }
+
+      const maskFns = [
+        (r, c) => (r + c) % 2 === 0,
+        (r, c) => r % 2 === 0,
+        (r, c) => c % 3 === 0,
+        (r, c) => (r + c) % 3 === 0,
+        (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+        (r, c) => ((r * c) % 2) + ((r * c) % 3) === 0,
+        (r, c) => (((r * c) % 2) + ((r * c) % 3)) % 2 === 0,
+        (r, c) => (((r + c) % 2) + ((r * c) % 3)) % 2 === 0,
+      ];
+
+      function penaltyScore(mat) {
+        let score = 0;
+        // Rule 1: 5+ same-color runs
+        for (let r = 0; r < size; r++) {
+          let run = 1;
+          for (let c = 1; c < size; c++) {
+            if (mat[r][c] === mat[r][c - 1]) {
+              run++;
+              if (run === 5) score += 3;
+              else if (run > 5) score += 1;
+            } else run = 1;
+          }
+        }
+        for (let c = 0; c < size; c++) {
+          let run = 1;
+          for (let r = 1; r < size; r++) {
+            if (mat[r][c] === mat[r - 1][c]) {
+              run++;
+              if (run === 5) score += 3;
+              else if (run > 5) score += 1;
+            } else run = 1;
+          }
+        }
+        // Rule 2: 2x2 blocks
+        for (let r = 0; r < size - 1; r++) {
+          for (let c = 0; c < size - 1; c++) {
+            const v = mat[r][c];
+            if (v === mat[r][c + 1] && v === mat[r + 1][c] && v === mat[r + 1][c + 1]) score += 3;
+          }
+        }
+        // Rule 4: Dark ratio balance
+        let dark = 0;
+        for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) if (mat[r][c]) dark++;
+        const k = Math.floor(Math.abs((dark * 100) / (size * size) - 50) / 5);
+        score += k * 10;
+        return score;
+      }
+
+      let bestMat = null;
+      let bestScore = Infinity;
+
+      for (let m = 0; m < 8; m++) {
+        const mat = base.map((row) => row.slice());
+        const fn = maskFns[m];
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            if (!isFn[r][c] && fn(r, c)) mat[r][c] = !mat[r][c];
+          }
+        }
+        const fBits = computeFormatBitsM(m);
+        const getF = (idx) => ((fBits >> idx) & 1) === 1;
+        for (let i = 0; i <= 5; i++) mat[8][i] = getF(14 - i);
+        mat[8][7] = getF(8);
+        mat[8][8] = getF(7);
+        mat[7][8] = getF(6);
+        for (let i = 0; i <= 5; i++) mat[5 - i][8] = getF(5 - i);
+        for (let i = 0; i < 7; i++) mat[size - 1 - i][8] = getF(14 - i);
+        for (let i = 0; i < 8; i++) mat[8][size - 8 + i] = getF(7 - i);
+
+        const sc = penaltyScore(mat);
+        if (sc < bestScore) {
+          bestScore = sc;
+          bestMat = mat;
+        }
+      }
+
+      return bestMat;
+    }
+
+    function generateQrSvgDataUrl(text, darkColor, lightColor = '#FFFFFF') {
+      const mat = encodeQrMatrix(text);
+      const size = mat.length;
+      const quiet = 4; // Full ISO 4-module quiet zone for instant scanning
+      const view = size + quiet * 2;
+      let d = '';
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (mat[r][c]) d += `M${c + quiet},${r + quiet}h1v1h-1z`;
+        }
+      }
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${view} ${view}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="${lightColor}"/><path d="${d}" fill="${darkColor}"/></svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    /* =========================================================================
+       LIVE DATA BINDING + PRINT / EXPORT ROUTING
+       ========================================================================= */
+    const QR_COLORS = {
+      ivory: '#3A3F21',   // Deep olive velvet on pure white (high contrast > 11:1)
+      maroon: '#491B1D',  // Deep oxblood maroon on pure white (high contrast > 12:1)
+      olive: '#33381C',   // Deep moss velvet on pure white (high contrast > 12.5:1)
+    };
+
+    function updateAllCards() {
+      const eyebrow = document.getElementById('in-eyebrow').value.trim();
+      const groom = document.getElementById('in-groom').value.trim();
+      const bride = document.getElementById('in-bride').value.trim();
+      const date = document.getElementById('in-date').value.trim();
+      const venue = document.getElementById('in-venue').value.trim();
+      const ctaTitle = document.getElementById('in-cta-title').value.trim();
+      const ctaBody = document.getElementById('in-cta-body').value.trim();
+      const hashtag = document.getElementById('in-hashtag').value.trim();
+      const url = document.getElementById('in-url').value.trim() || 'https://fikrialyagallery.memoira.art';
+      const urlDisplay = url.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+
+      document.getElementById('header-url-preview').textContent = url;
+
+      document.querySelectorAll('[data-bind="eyebrow"]').forEach((el) => (el.textContent = eyebrow));
+      document.querySelectorAll('[data-bind="groom"]').forEach((el) => (el.textContent = groom));
+      document.querySelectorAll('[data-bind="bride"]').forEach((el) => (el.textContent = bride));
+      document.querySelectorAll('[data-bind="date-upper"]').forEach((el) => (el.textContent = date.toUpperCase()));
+      document.querySelectorAll('[data-bind="venue"]').forEach((el) => (el.textContent = venue));
+      document.querySelectorAll('[data-bind="venue-upper"]').forEach((el) => (el.textContent = venue.toUpperCase()));
+      document.querySelectorAll('[data-bind="cta-title"]').forEach((el) => (el.textContent = ctaTitle));
+      document.querySelectorAll('[data-bind="cta-body"]').forEach((el) => (el.textContent = ctaBody));
+      document.querySelectorAll('[data-bind="hashtag"]').forEach((el) => (el.textContent = hashtag));
+      document.querySelectorAll('[data-bind="url-display"]').forEach((el) => (el.textContent = urlDisplay));
+
+      document.querySelectorAll('img[data-qr-theme]').forEach((img) => {
+        const theme = img.getAttribute('data-qr-theme');
+        img.src = generateQrSvgDataUrl(url, QR_COLORS[theme] || '#3A3F21', '#FFFFFF');
+      });
+    }
+
+    function filterCardsForOutput(cardId) {
+      document.querySelectorAll('.card-showcase').forEach((node) => {
+        const id = node.getAttribute('data-card-id');
+        if (!cardId || cardId === 'all' || id === cardId) {
+          node.classList.remove('hidden-card');
+        } else {
+          node.classList.add('hidden-card');
+        }
+      });
+    }
+
+    function printCard(cardId) {
+      filterCardsForOutput(cardId);
+      window.print();
+      setTimeout(() => filterCardsForOutput('all'), 300);
+    }
+
+    // Studio UI Listeners
+    document.getElementById('toggle-editor-btn').addEventListener('click', () => {
+      document.getElementById('editor-panel').classList.toggle('open');
+    });
+
+    document.querySelectorAll('.editor-panel input').forEach((inp) => {
+      inp.addEventListener('input', updateAllCards);
+    });
+
+    // Apply URL query parameters for headless PDF / 300 DPI PNG export
+    (function init() {
+      updateAllCards();
+      const params = new URLSearchParams(window.location.search);
+      const card = params.get('card');
+      const exportMode = params.get('export');
+      if (exportMode) {
+        document.body.classList.add('export-mode');
+        if (exportMode === 'png') {
+          document.body.classList.add('export-png');
+        }
+        filterCardsForOutput(card || 'all');
+      }
+    })();
+  </script>
+</body>
+</html>
