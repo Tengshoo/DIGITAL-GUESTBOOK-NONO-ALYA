@@ -25,56 +25,85 @@ const supabaseAnonKey =
   '';
 const currentEventId = EVENT_CONFIG.supabase?.eventId || 'default';
 
-const SAFE_PHOTO_DATA_URL_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\s]+$/;
+const SAFE_PHOTO_HEADER_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,/i;
 const SAFE_AUDIO_DATA_URL_REGEX =
   /^data:audio\/(mp4|webm|aac|ogg|wav|mpeg)(;codecs=[a-zA-Z0-9_,.-]+)?;base64,[A-Za-z0-9+/=\s]+$/;
 
 const MAX_PHOTO_DATA_URL_LENGTH = 4_500_000;
 const MAX_AUDIO_DATA_URL_LENGTH = 3_500_000;
 const SUBMIT_COOLDOWN_MS = 4_000;
+const PHOTO_COUNT_CACHE_TTL_MS = 15_000;
 let lastSubmissionTimestamp = 0;
+let cachedPhotoCount: { count: number; timestamp: number } | null = null;
+
+// O(1) memoization cache so Live Wall & Gallery Grid never re-parse multi-megabyte JSON/Base64 strings
+const parsedPhotosCache = new Map<string, string[]>();
 
 /**
- * Validates a single base64 image data URL
+ * Fast validation of a Base64 image data URL without scanning 4MB strings with backtracking regex
  */
 export function sanitizePhotoUrl(url?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
+  const len = trimmed.length;
+  if (len < 32 || len > MAX_PHOTO_DATA_URL_LENGTH) return null;
+
+  // Allow https:// demo showcase URLs if demo mode is active
   if (
-    trimmed.length > 0 &&
-    trimmed.length <= MAX_PHOTO_DATA_URL_LENGTH &&
-    SAFE_PHOTO_DATA_URL_REGEX.test(trimmed)
+    (EVENT_CONFIG as { isDemoMode?: boolean }).isDemoMode &&
+    trimmed.startsWith('https://images.unsplash.com/')
   ) {
     return trimmed;
   }
-  return null;
+
+  if (!SAFE_PHOTO_HEADER_REGEX.test(trimmed.slice(0, 40))) {
+    return null;
+  }
+
+  // Ensure no quote/script injection characters exist
+  if (trimmed.includes('"') || trimmed.includes('<') || trimmed.includes('>')) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 /**
  * Parses `entry.photo_url` (which may be a single data URL string or a JSON array of up to 10 data URLs)
- * into a validated array of image data URLs.
+ * into a validated array of image data URLs, with O(1) memoization.
  */
 export function parsePhotoUrls(rawPhotoField?: string | null): string[] {
   if (!rawPhotoField || typeof rawPhotoField !== 'string') return [];
+  const cached = parsedPhotosCache.get(rawPhotoField);
+  if (cached) return cached;
+
   const trimmed = rawPhotoField.trim();
   if (!trimmed) return [];
 
+  let result: string[] = [];
   if (trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
-        return parsed
+        result = parsed
           .map((item) => (typeof item === 'string' ? sanitizePhotoUrl(item) : null))
           .filter((item): item is string => Boolean(item))
           .slice(0, MAX_PHOTOS_PER_WISH);
       }
     } catch {
-      return [];
+      result = [];
     }
+  } else {
+    const single = sanitizePhotoUrl(trimmed);
+    result = single ? [single] : [];
   }
 
-  const single = sanitizePhotoUrl(trimmed);
-  return single ? [single] : [];
+  if (parsedPhotosCache.size > 400) {
+    const oldestKey = parsedPhotosCache.keys().next().value;
+    if (oldestKey) parsedPhotosCache.delete(oldestKey);
+  }
+  parsedPhotosCache.set(rawPhotoField, result);
+  return result;
 }
 
 /**
@@ -199,7 +228,15 @@ function saveLocalEntries(entries: SupabaseGuestEntry[]) {
 /**
  * Get total count of photo uploads for the current event
  */
-export async function getPhotoUploadCount(): Promise<number> {
+export async function getPhotoUploadCount(forceRefresh = false): Promise<number> {
+  if (
+    !forceRefresh &&
+    cachedPhotoCount &&
+    Date.now() - cachedPhotoCount.timestamp < PHOTO_COUNT_CACHE_TTL_MS
+  ) {
+    return cachedPhotoCount.count;
+  }
+
   const supabase = getSupabase();
   if (supabase) {
     try {
@@ -214,6 +251,7 @@ export async function getPhotoUploadCount(): Promise<number> {
 
       const { count, error } = await query;
       if (!error && typeof count === 'number') {
+        cachedPhotoCount = { count, timestamp: Date.now() };
         return count;
       }
     } catch (err) {
@@ -222,7 +260,9 @@ export async function getPhotoUploadCount(): Promise<number> {
   }
 
   const local = getLocalEntries();
-  return local.reduce((sum, e) => sum + parsePhotoUrls(e.photo_url).length, 0);
+  const localCount = local.reduce((sum, e) => sum + parsePhotoUrls(e.photo_url).length, 0);
+  cachedPhotoCount = { count: localCount, timestamp: Date.now() };
+  return localCount;
 }
 
 /**
@@ -341,6 +381,7 @@ export async function submitGuestbookEntry(entry: {
         return { success: false, error: error.message };
       }
       lastSubmissionTimestamp = Date.now();
+      cachedPhotoCount = null;
       return { success: true };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';

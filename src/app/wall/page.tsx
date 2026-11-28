@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   Maximize,
@@ -14,7 +14,6 @@ import {
   Heart,
   Grid,
   Monitor,
-  Volume2,
   Camera,
   Home,
   Shield,
@@ -37,6 +36,23 @@ interface GuestEntry {
   created_at: string;
 }
 
+/**
+ * Fast O(N) structural check without serializing megabytes of Base64 photo strings via JSON.stringify
+ */
+function areEntriesUnchanged(prev: GuestEntry[], next: GuestEntry[]): boolean {
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < prev.length; i++) {
+    if (
+      prev[i].id !== next[i].id ||
+      prev[i].is_approved !== next[i].is_approved ||
+      prev[i].created_at !== next[i].created_at
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export default function WallModePage() {
   const [entries, setEntries] = useState<GuestEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -45,15 +61,16 @@ export default function WallModePage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isGridView, setIsGridView] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [qrOrigin, setQrOrigin] = useState('');
 
   const CYCLE_INTERVAL = 7000; // 7 seconds per slide
-  const POLL_INTERVAL = 5000; // 5 seconds polling
-  const cycleTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const progressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const POLL_INTERVAL = 6000; // 6 seconds lightweight metadata check
 
-  // Setup QR origin URL once on client with basePath support
+  // Track remaining duration accurately across pause/resume without 100ms React state re-renders
+  const slideStartRef = useRef<number>(Date.now());
+  const remainingMsRef = useRef<number>(CYCLE_INTERVAL);
+  const slideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
@@ -61,18 +78,17 @@ export default function WallModePage() {
     }
   }, []);
 
+  const qrDataUrl = useMemo(
+    () => generateQrCodeDataUrl(qrOrigin || 'https://memoira.art', '#3F3229', '#FFFFFF'),
+    [qrOrigin]
+  );
+
   // Fetch approved entries from Supabase / Local data
   const fetchEntries = useCallback(async () => {
     try {
       const data = await getApprovedEntries();
       if (Array.isArray(data)) {
-        setEntries((prev) => {
-          // If counts changed or IDs differ, update
-          if (JSON.stringify(data) !== JSON.stringify(prev)) {
-            return data;
-          }
-          return prev;
-        });
+        setEntries((prev) => (areEntriesUnchanged(prev, data) ? prev : data));
       }
     } catch (err) {
       console.error('Error polling live entries:', err);
@@ -100,40 +116,67 @@ export default function WallModePage() {
     };
   }, [fetchEntries]);
 
-  // Initial load and polling fallback every 5 seconds
+  // Initial load and polling fallback
   useEffect(() => {
     fetchEntries();
-    const pollId = setInterval(fetchEntries, POLL_INTERVAL);
+    const pollId = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        fetchEntries();
+      }
+    }, POLL_INTERVAL);
     return () => clearInterval(pollId);
   }, [fetchEntries]);
 
-  // Handle slide progression
   const goToNext = useCallback(() => {
     if (entries.length <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % entries.length);
     setActivePhotoSubIndex(0);
-    setProgress(0);
   }, [entries.length]);
 
   const goToPrev = useCallback(() => {
     if (entries.length <= 1) return;
     setCurrentIndex((prev) => (prev - 1 + entries.length) % entries.length);
     setActivePhotoSubIndex(0);
-    setProgress(0);
   }, [entries.length]);
 
+  // Keep currentIndex in bounds if entries shrink after moderation
+  useEffect(() => {
+    if (entries.length > 0 && currentIndex >= entries.length) {
+      setCurrentIndex(0);
+    }
+  }, [entries.length, currentIndex]);
+
   const activeEntry = entries[currentIndex];
-  const activeEntryPhotos = activeEntry ? parsePhotoUrls(activeEntry.photo_url) : [];
+  const activeEntryPhotos = useMemo(
+    () => (activeEntry ? parsePhotoUrls(activeEntry.photo_url) : []),
+    [activeEntry]
+  );
+
   const currentSlideDuration =
     activeEntryPhotos.length > 2
       ? Math.min(20000, activeEntryPhotos.length * 2500)
       : CYCLE_INTERVAL;
 
-  // Auto-cycle sub-photos inside a multi-photo Polaroid card
+  // Reset remaining time whenever slide changes
   useEffect(() => {
     setActivePhotoSubIndex(0);
-  }, [currentIndex, activeEntry?.id]);
+    remainingMsRef.current = currentSlideDuration;
+    slideStartRef.current = Date.now();
+  }, [currentIndex, activeEntry?.id, currentSlideDuration]);
 
+  // Pre-decode the NEXT slide's lead photo in the background so slide transitions are 0ms instant
+  useEffect(() => {
+    if (entries.length <= 1 || isGridView) return;
+    const nextEntry = entries[(currentIndex + 1) % entries.length];
+    const nextPhotos = nextEntry ? parsePhotoUrls(nextEntry.photo_url) : [];
+    if (nextPhotos[0]) {
+      const preloadImg = new Image();
+      preloadImg.decoding = 'async';
+      preloadImg.src = nextPhotos[0];
+    }
+  }, [currentIndex, entries, isGridView]);
+
+  // Auto-cycle sub-photos inside a multi-photo Polaroid card
   useEffect(() => {
     if (isPaused || isGridView || activeEntryPhotos.length <= 1) return;
     const subTimer = setInterval(() => {
@@ -142,32 +185,34 @@ export default function WallModePage() {
     return () => clearInterval(subTimer);
   }, [isPaused, isGridView, activeEntryPhotos.length, currentIndex]);
 
-  // Auto-cycle timer
+  // Zero-re-render slide advance timer (paired with pure CSS GPU progress bar)
   useEffect(() => {
-    if (isPaused || entries.length <= 1 || isGridView) {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    if (slideTimeoutRef.current) {
+      clearTimeout(slideTimeoutRef.current);
+      slideTimeoutRef.current = null;
+    }
+
+    if (entries.length <= 1 || isGridView) return;
+
+    if (isPaused) {
+      const elapsed = Date.now() - slideStartRef.current;
+      remainingMsRef.current = Math.max(250, remainingMsRef.current - elapsed);
       return;
     }
 
-    const intervalStep = 100;
-    const increment = (intervalStep / currentSlideDuration) * 100;
-
-    progressTimerRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          goToNext();
-          return 0;
-        }
-        return prev + increment;
-      });
-    }, intervalStep);
+    slideStartRef.current = Date.now();
+    slideTimeoutRef.current = setTimeout(() => {
+      remainingMsRef.current = currentSlideDuration;
+      goToNext();
+    }, remainingMsRef.current);
 
     return () => {
-      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      if (slideTimeoutRef.current) {
+        clearTimeout(slideTimeoutRef.current);
+      }
     };
-  }, [isPaused, entries.length, isGridView, goToNext, currentSlideDuration]);
+  }, [isPaused, entries.length, isGridView, currentIndex, currentSlideDuration, goToNext]);
 
-  // Fullscreen toggle handler
   const toggleFullscreen = () => {
     if (typeof document === 'undefined') return;
     const doc = document as unknown as {
@@ -227,12 +272,12 @@ export default function WallModePage() {
 
   return (
     <div
-      className={`relative w-full min-h-screen min-h-[100dvh] flex flex-col justify-between overflow-x-hidden bg-[#140f0c] text-[#FAF8F5] select-none transition-all pb-[env(safe-area-inset-bottom,0px)] ${
+      className={`relative w-full min-h-screen min-h-[100dvh] flex flex-col justify-between overflow-x-hidden bg-[#140f0c] text-[#FAF8F5] select-none pb-[env(safe-area-inset-bottom,0px)] ${
         isFullscreen ? 'fixed inset-0 z-50 p-3 sm:p-8' : 'p-3 sm:p-8'
       }`}
     >
       {/* 1. Full-Bleed Cinematic Background Image Matching Main Page */}
-      <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0">
+      <div className="fixed inset-0 w-full h-full pointer-events-none overflow-hidden z-0 gpu-layer">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={bgImage}
@@ -242,14 +287,16 @@ export default function WallModePage() {
           loading="eager"
           decoding="async"
         />
-        {/* Dark Vignette Overlay for Crisp Readability on Projectors & Screens */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/55 to-black/85" />
       </div>
 
       {/* 2. Background Animated Bokeh Sparks */}
       <div className="absolute inset-0 pointer-events-none opacity-20 z-0">
         <div className="absolute top-1/4 left-1/6 w-64 h-64 rounded-full bg-champagne-400/20 blur-3xl animate-float-gentle" />
-        <div className="absolute bottom-1/3 right-1/6 w-72 h-72 rounded-full bg-rose-500/15 blur-3xl animate-float-gentle" style={{ animationDelay: '3s' }} />
+        <div
+          className="absolute bottom-1/3 right-1/6 w-72 h-72 rounded-full bg-rose-500/15 blur-3xl animate-float-gentle"
+          style={{ animationDelay: '3s' }}
+        />
       </div>
 
       {/* Top Header Bar */}
@@ -280,7 +327,6 @@ export default function WallModePage() {
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 bg-warm-900/60 backdrop-blur-md p-1.5 rounded-full border border-warm-700/60 shadow-lg">
-          {/* Toggle Grid vs Single Spotlight view */}
           <button
             onClick={() => setIsGridView(!isGridView)}
             title={isGridView ? 'Switch to Spotlight Slideshow' : 'Switch to Gallery Grid'}
@@ -291,7 +337,6 @@ export default function WallModePage() {
             {isGridView ? <Monitor className="w-4 h-4" /> : <Grid className="w-4 h-4" />}
           </button>
 
-          {/* QR Code Modal Launcher */}
           <button
             onClick={() => setShowQrModal(true)}
             title="Show QR Code for Guests"
@@ -301,7 +346,6 @@ export default function WallModePage() {
             <span className="hidden sm:inline">Guest QR</span>
           </button>
 
-          {/* Photobooth Studio Link */}
           <Link
             href="/photobooth"
             title="Photobooth Studio"
@@ -311,7 +355,6 @@ export default function WallModePage() {
             <span className="hidden sm:inline">Photobooth</span>
           </Link>
 
-          {/* Fullscreen Toggle */}
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
@@ -325,7 +368,6 @@ export default function WallModePage() {
       {/* Main Presentation Screen */}
       <main className="relative z-10 flex-1 flex items-center justify-center max-w-6xl mx-auto w-full my-auto py-2">
         {entries.length === 0 ? (
-          /* Empty State */
           <div className="text-center p-10 bg-warm-900/50 backdrop-blur-md rounded-3xl border border-warm-800 max-w-lg shadow-2xl">
             <Sparkles className="w-12 h-12 text-champagne-400 mx-auto mb-4 animate-bounce" />
             <h2 className="font-serif text-3xl font-bold text-champagne-200 mb-2">
@@ -343,14 +385,14 @@ export default function WallModePage() {
             </button>
           </div>
         ) : isGridView ? (
-          /* Event Gallery Grid Mode (2xN on mobile, 3xN on tablet, 4xN on desktop) */
-          <div className="w-full max-h-[78vh] overflow-y-auto pr-1 sm:pr-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
+          /* Event Gallery Grid Mode with CSS content-visibility virtualization */
+          <div className="w-full max-h-[78vh] overflow-y-auto touch-scroll pr-1 sm:pr-2 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 animate-fade-in">
             {entries.map((entry) => {
               const entryPhotos = parsePhotoUrls(entry.photo_url);
               return (
                 <div
                   key={entry.id}
-                  className="bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform hover:scale-[1.02]"
+                  className="content-auto bg-white text-warm-900 p-3 sm:p-5 rounded-xl sm:rounded-2xl shadow-polaroid border border-champagne-200/50 flex flex-col justify-between transition-transform duration-200 hover:scale-[1.02]"
                 >
                   <div>
                     {entryPhotos.length > 0 && (
@@ -361,9 +403,10 @@ export default function WallModePage() {
                           alt={`Photo from ${entry.name}`}
                           className="max-h-44 sm:max-h-72 w-auto max-w-full object-contain rounded-lg"
                           loading="lazy"
+                          decoding="async"
                         />
                         {entryPhotos.length > 1 && (
-                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold backdrop-blur-xs">
+                          <span className="absolute bottom-2 right-2 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-semibold backdrop-blur-sm">
                             +{entryPhotos.length - 1} photos
                           </span>
                         )}
@@ -395,21 +438,19 @@ export default function WallModePage() {
               );
             })}
           </div>
-        ) : (
+        ) : activeEntry ? (
           /* Cinematic Spotlight Polaroid Mode */
           <div
             key={activeEntry.id}
-            className="w-full max-w-4xl transition-all duration-700 ease-out animate-fade-up"
+            className="w-full max-w-4xl animate-fade-up gpu-layer"
           >
             <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FAF5EE] text-warm-900 rounded-3xl p-6 sm:p-10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border-4 border-[#F5EEDB] relative">
-              {/* Corner Golden Pin / Ribbon Accent */}
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-champagne-600 text-white text-[11px] font-sans font-semibold tracking-widest uppercase shadow-md flex items-center gap-1.5 border border-champagne-300">
                 <Sparkles className="w-3 h-3 text-champagne-200" />
                 <span>Memory #{activeEntry.id}</span>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-2">
-                {/* Left: Photo column (if available) */}
                 {activeEntryPhotos.length > 0 ? (
                   <div className="lg:col-span-5 flex flex-col items-center">
                     <div className="relative p-3 bg-white rounded-2xl shadow-polaroid border border-warm-200 rotate-[-1.5deg] hover:rotate-0 transition-transform duration-500 max-w-sm w-full">
@@ -418,17 +459,17 @@ export default function WallModePage() {
                         <img
                           src={activeEntryPhotos[activePhotoSubIndex] || activeEntryPhotos[0]}
                           alt={`Memory captured by ${activeEntry.name}`}
-                          className="max-h-[360px] sm:max-h-[440px] w-auto max-w-full object-contain rounded-lg transition-all duration-300"
+                          className="max-h-[360px] sm:max-h-[440px] w-auto max-w-full object-contain rounded-lg transition-opacity duration-200"
+                          decoding="async"
                         />
 
                         {activeEntryPhotos.length > 1 && (
-                          <div className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-xs text-white text-[11px] font-mono font-semibold">
+                          <div className="absolute top-2 right-2 px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-sm text-white text-[11px] font-mono font-semibold">
                             {activePhotoSubIndex + 1} / {activeEntryPhotos.length}
                           </div>
                         )}
                       </div>
 
-                      {/* Carousel dots when entry has multiple photos */}
                       {activeEntryPhotos.length > 1 && (
                         <div className="flex items-center justify-center gap-1.5 pt-2.5">
                           {activeEntryPhotos.map((_, idx) => (
@@ -462,19 +503,15 @@ export default function WallModePage() {
                     <span className="font-serif text-lg font-semibold text-warm-800">
                       Celebration Toast
                     </span>
-                    <span className="text-xs text-warm-500 mt-1">
-                      Forever cherished
-                    </span>
+                    <span className="text-xs text-warm-500 mt-1">Forever cherished</span>
                   </div>
                 )}
 
-                {/* Right: Message & Signature column */}
                 <div
                   className={`${
                     activeEntryPhotos.length > 0 ? 'lg:col-span-7' : 'lg:col-span-8'
                   } flex flex-col justify-between gap-6`}
                 >
-                  {/* Message Quote */}
                   <div className="space-y-4">
                     <span className="font-serif text-4xl sm:text-5xl leading-none text-champagne-400 font-bold block">
                       &ldquo;
@@ -484,14 +521,15 @@ export default function WallModePage() {
                     </blockquote>
                   </div>
 
-                  {/* Audio note if present */}
                   {activeEntry.audio_url && (
                     <div className="pt-1">
-                      <AudioPlayer src={activeEntry.audio_url} label={`Voice wish from ${activeEntry.name}`} />
+                      <AudioPlayer
+                        src={activeEntry.audio_url}
+                        label={`Voice wish from ${activeEntry.name}`}
+                      />
                     </div>
                   )}
 
-                  {/* Sign-off */}
                   <div className="pt-4 border-t-2 border-warm-200/70 flex items-center justify-between gap-4">
                     <div>
                       <span className="text-xs uppercase tracking-widest text-warm-500 block">
@@ -513,23 +551,26 @@ export default function WallModePage() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </main>
 
       {/* Bottom Cycling & Controller Bar */}
       <footer className="relative z-10 max-w-7xl mx-auto w-full pt-4">
-        {/* Auto-cycle progress bar */}
+        {/* Pure GPU-Composited 60fps Progress Bar (Zero React State Re-Renders!) */}
         {!isGridView && entries.length > 1 && (
           <div className="w-full bg-warm-900/80 h-1.5 rounded-full overflow-hidden mb-3 border border-warm-800">
             <div
-              className="bg-gradient-to-r from-champagne-500 to-rose-400 h-full transition-all duration-100 ease-linear shadow-champagne"
-              style={{ width: `${progress}%` }}
+              key={`${currentIndex}-${activeEntry?.id}`}
+              className="wall-progress-bar bg-gradient-to-r from-champagne-500 to-rose-400 h-full w-full shadow-champagne"
+              style={{
+                animationDuration: `${currentSlideDuration}ms`,
+                animationPlayState: isPaused ? 'paused' : 'running',
+              }}
             />
           </div>
         )}
 
         <div className="flex items-center justify-between text-xs text-warm-400">
-          {/* Navigation Controls */}
           {!isGridView && entries.length > 1 && (
             <div className="flex items-center gap-2">
               <button
@@ -546,7 +587,11 @@ export default function WallModePage() {
                 aria-label={isPaused ? 'Resume slideshow' : 'Pause slideshow'}
                 className="p-2 rounded-full bg-warm-900/80 hover:bg-warm-800 text-champagne-300 border border-warm-700 transition"
               >
-                {isPaused ? <Play className="w-4 h-4 fill-current" /> : <Pause className="w-4 h-4 fill-current" />}
+                {isPaused ? (
+                  <Play className="w-4 h-4 fill-current" />
+                ) : (
+                  <Pause className="w-4 h-4 fill-current" />
+                )}
               </button>
 
               <button
@@ -563,7 +608,6 @@ export default function WallModePage() {
             </div>
           )}
 
-          {/* Quick icon actions (Home, Admin Moderation) */}
           <div className="ml-auto flex items-center gap-2">
             <Link
               href="/"
@@ -607,18 +651,17 @@ export default function WallModePage() {
               Imbas kod QR menggunakan kamera telefon untuk membuka buku tetamu digital.
             </p>
 
-            {/* Local Offline SVG QR Code Generator */}
             <div className="p-4 bg-white rounded-2xl shadow-inner border border-warm-200 inline-block mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={generateQrCodeDataUrl(qrOrigin || 'http://localhost:3000', '#3F3229', '#FFFFFF')}
+                src={qrDataUrl}
                 alt="QR code to sign the guestbook"
                 className="w-48 h-48 mx-auto"
               />
             </div>
 
             <p className="font-mono text-[11px] text-warm-500 break-all bg-warm-100/80 p-2 rounded-lg">
-              {qrOrigin || 'http://localhost:3000'}
+              {qrOrigin || 'https://memoira.art'}
             </p>
 
             <button

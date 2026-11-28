@@ -1,6 +1,7 @@
 import { PHOTOBOOTH_STRIP_THEMES, PhotoboothStripTheme, StripSlot } from '@/components/Photobooth/stripThemes';
 import { PHOTO_FILTERS, PhotoFilter } from '@/components/PhotoFilterSelector';
 import { EVENT_CONFIG } from '@/config/eventConfig';
+import { getAssetPath, resolveFontFamily } from '@/lib/assets';
 
 export interface EventInfo {
   welcomeTitle: string;
@@ -13,14 +14,27 @@ export interface EventInfo {
 /**
  * Helper to load an image from URL or dataURL into an HTMLImageElement
  */
+const templateImageCache = new Map<string, Promise<HTMLImageElement>>();
+
 function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
+  const resolvedSrc = src.startsWith('data:') ? src : getAssetPath(src);
+  const isStaticAsset = !resolvedSrc.startsWith('data:') && !resolvedSrc.startsWith('blob:');
+  if (isStaticAsset && templateImageCache.has(resolvedSrc)) {
+    return templateImageCache.get(resolvedSrc)!;
+  }
+  const promise = new Promise<HTMLImageElement>((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    img.decoding = 'async';
     img.onload = () => resolve(img);
-    img.onerror = (e) => reject(e);
-    img.src = src;
+    img.onerror = (e) => {
+      if (isStaticAsset) templateImageCache.delete(resolvedSrc);
+      reject(e);
+    };
+    img.src = resolvedSrc;
   });
+  if (isStaticAsset) templateImageCache.set(resolvedSrc, promise);
+  return promise;
 }
 
 /**
@@ -219,7 +233,7 @@ export async function generatePhotoboothStripCanvas(
         ctx.rotate((tb.rotation * Math.PI) / 180);
       }
 
-      ctx.font = `${tb.fontWeight} ${tb.fontSize}px ${tb.fontFamily}`;
+      ctx.font = `${tb.fontWeight} ${tb.fontSize}px ${resolveFontFamily(tb.fontFamily, true)}`;
       ctx.fillStyle = tb.color;
       ctx.textAlign = tb.align;
       ctx.textBaseline = 'middle';

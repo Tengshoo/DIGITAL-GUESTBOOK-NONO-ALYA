@@ -5,6 +5,7 @@ import { PHOTOBOOTH_STRIP_THEMES, PhotoboothStripTheme, StripSlot } from './stri
 import { PHOTO_FILTERS } from '@/components/PhotoFilterSelector';
 import { Camera, Plus, RotateCcw, Sparkles } from 'lucide-react';
 import { EVENT_CONFIG } from '@/config/eventConfig';
+import { getAssetPath, resolveFontFamily } from '@/lib/assets';
 
 interface PhotoboothStripViewProps {
   photos: string[];
@@ -60,10 +61,11 @@ export default function PhotoboothStripView({
     >
       {/* 1. Authentic Template Artwork Background */}
       <img
-        src={currentTheme.backgroundUrl}
+        src={getAssetPath(currentTheme.backgroundUrl)}
         alt={currentTheme.name}
         className="absolute inset-0 w-full h-full object-fill pointer-events-none z-0"
         loading="eager"
+        decoding="async"
       />
 
       {/* 2. Photo Slots (Rendered at exact coordinate percentages with rotations) */}
@@ -242,7 +244,7 @@ export default function PhotoboothStripView({
                   : 'flex-start',
               textAlign: tb.align,
               color: tb.color,
-              fontFamily: tb.fontFamily,
+              fontFamily: resolveFontFamily(tb.fontFamily, false),
               fontSize: relativeFontSize,
               fontWeight: tb.fontWeight,
               lineHeight: 1.15,

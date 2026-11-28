@@ -3,6 +3,7 @@
 import React from 'react';
 import { EVENT_CONFIG } from '@/config/eventConfig';
 import { PHOTO_FILTERS } from '@/components/PhotoFilterSelector';
+import { resolveFontFamily } from '@/lib/assets';
 
 export type SelfieFrameId =
   | 'none'
@@ -987,7 +988,7 @@ export async function renderSelfieWithFrameToCanvas(
         ctx.fillText(meta.headerTagline.split('').join(' '), W / 2, 136);
 
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = '700 84px "Dancing Script", "Playfair Display", Georgia, serif';
+        ctx.font = `700 84px ${resolveFontFamily('"Dancing Script", "Playfair Display", Georgia, serif', true)}`;
         ctx.fillText(meta.fullCoupleName, W / 2, H - 210);
 
         ctx.fillStyle = '#F5DEB3';
@@ -1127,7 +1128,7 @@ export async function renderSelfieWithFrameToCanvas(
         ctx.shadowBlur = 12;
         ctx.fillStyle = '#FFFFFF';
         ctx.textAlign = 'center';
-        ctx.font = 'italic 600 76px "Cormorant Garamond", "Playfair Display", Georgia, serif';
+        ctx.font = `italic 600 76px ${resolveFontFamily('"Cormorant Garamond", "Playfair Display", Georgia, serif', true)}`;
         ctx.fillText(meta.fullCoupleName, W / 2, bottomY - 142);
 
         const subLabel = meta.venue
@@ -1242,7 +1243,7 @@ export async function renderSelfieWithFrameToCanvas(
 
         ctx.fillStyle = '#2C221E';
         ctx.textAlign = 'center';
-        ctx.font = '700 76px "Dancing Script", "Playfair Display", Georgia, serif';
+        ctx.font = `700 76px ${resolveFontFamily('"Dancing Script", "Playfair Display", Georgia, serif', true)}`;
         ctx.fillText(`${meta.fullCoupleName} ♡`, W / 2, H - bottom / 2 - 12);
 
         ctx.fillStyle = '#6E5D53';
