@@ -56,7 +56,7 @@ export const EVENT_CONFIG = {
   // 6b. Live Selfie Camera Customization (9:16 Story Frames & 30s Video)
   selfie: {
     // Default selected 9:16 frame when opening Selfie Camera:
-    // 'wds01' | 'royal-lace' | 'editorial-vogue' | 'minimal-arch' | 'botanical-monogram' | 'retro-cam' | 'polaroid-chin' | 'none'
+    // 'wds01' | 'royal-lace' | 'editorial-vogue' | 'botanical-monogram' | 'retro-cam' | 'polaroid-chin' | 'none'
     defaultFrame: 'wds01',
 
     // Couple names printed on 9:16 selfie frames (falls back to photobooth.coupleNames or title)

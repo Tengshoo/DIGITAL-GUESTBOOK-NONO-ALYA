@@ -10,7 +10,6 @@ export type SelfieFrameId =
   | 'wds01'
   | 'royal-lace'
   | 'editorial-vogue'
-  | 'minimal-arch'
   | 'botanical-monogram'
   | 'retro-cam'
   | 'polaroid-chin';
@@ -53,29 +52,22 @@ export const SELFIE_FRAMES: SelfieFrameDefinition[] = [
     accent: '#FFFFFF',
   },
   {
-    id: 'minimal-arch',
-    code: 'WDS04',
-    name: 'Fine-Line Arch',
-    category: 'Architectural',
-    accent: '#FAF8F5',
-  },
-  {
     id: 'botanical-monogram',
-    code: 'WDS05',
+    code: 'WDS04',
     name: 'Botanical Crest',
     category: 'Romantic',
     accent: '#E2E8F0',
   },
   {
     id: 'retro-cam',
-    code: 'WDS06',
+    code: 'WDS05',
     name: '90s Camcorder',
     category: 'Retro Film',
     accent: '#FBBF24',
   },
   {
     id: 'polaroid-chin',
-    code: 'WDS07',
+    code: 'WDS06',
     name: 'Instant Story',
     category: 'Polaroid',
     accent: '#FAF8F5',
@@ -271,175 +263,6 @@ function RoyalCornerSvg({
 }
 
 /**
- * Generates an SVG path string for a rectangle with inward-curved (scalloped) French invitation corners
- */
-function buildScallopedRectPath(
-  left: number,
-  top: number,
-  right: number,
-  bottom: number,
-  scoop: number
-): string {
-  return [
-    `M ${left + scoop},${top}`,
-    `L ${right - scoop},${top}`,
-    `A ${scoop},${scoop} 0 0,0 ${right},${top + scoop}`,
-    `L ${right},${bottom - scoop}`,
-    `A ${scoop},${scoop} 0 0,0 ${right - scoop},${bottom}`,
-    `L ${left + scoop},${bottom}`,
-    `A ${scoop},${scoop} 0 0,0 ${left},${bottom - scoop}`,
-    `L ${left},${top + scoop}`,
-    `A ${scoop},${scoop} 0 0,0 ${left + scoop},${top}`,
-    'Z',
-  ].join(' ');
-}
-
-/**
- * Generates an SVG path string for a classic cathedral/atelier round-top arch
- */
-function buildCathedralArchPath(
-  cx: number,
-  springY: number,
-  radius: number,
-  bottom: number,
-  cornerRadius: number
-): string {
-  const left = cx - radius;
-  const right = cx + radius;
-  return [
-    `M ${left},${springY}`,
-    `A ${radius},${radius} 0 0,1 ${right},${springY}`,
-    `L ${right},${bottom - cornerRadius}`,
-    `Q ${right},${bottom} ${right - cornerRadius},${bottom}`,
-    `L ${left + cornerRadius},${bottom}`,
-    `Q ${left},${bottom} ${left},${bottom - cornerRadius}`,
-    'Z',
-  ].join(' ');
-}
-
-/**
- * Generates an elongated 4-point celestial fine-line starburst SVG path
- */
-function buildStarburstPath(cx: number, cy: number, rx: number, ry: number): string {
-  const k = Math.min(rx, ry) * 0.2;
-  return [
-    `M ${cx},${cy - ry}`,
-    `Q ${cx + k * 0.35},${cy - k * 0.35} ${cx + rx},${cy}`,
-    `Q ${cx + k * 0.35},${cy + k * 0.35} ${cx},${cy + ry}`,
-    `Q ${cx - k * 0.35},${cy + k * 0.35} ${cx - rx},${cy}`,
-    `Q ${cx - k * 0.35},${cy - k * 0.35} ${cx},${cy - ry}`,
-    'Z',
-  ].join(' ');
-}
-
-/**
- * Draws curved uppercase text along the top circular arc of the cathedral arch on an HTML5 Canvas
- */
-function drawCurvedArcTextOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  cx: number,
-  cy: number,
-  radius: number,
-  trackingPx: number
-) {
-  const chars = Array.from(text);
-  if (chars.length === 0) return;
-
-  const widths = chars.map((ch) => ctx.measureText(ch).width);
-  const totalWidth =
-    widths.reduce((acc, w) => acc + w, 0) + Math.max(0, chars.length - 1) * trackingPx;
-  const totalAngle = totalWidth / radius;
-
-  let currentAngle = -Math.PI / 2 - totalAngle / 2;
-
-  for (let i = 0; i < chars.length; i++) {
-    const w = widths[i];
-    const charCenterAngle = currentAngle + w / 2 / radius;
-
-    ctx.save();
-    ctx.translate(
-      cx + Math.cos(charCenterAngle) * radius,
-      cy + Math.sin(charCenterAngle) * radius
-    );
-    ctx.rotate(charCenterAngle + Math.PI / 2);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(chars[i], 0, 0);
-    ctx.restore();
-
-    currentAngle += (w + trackingPx) / radius;
-  }
-}
-
-/**
- * Draws the scalloped French-invitation rectangle path on Canvas
- */
-function strokeScallopedRectOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  left: number,
-  top: number,
-  right: number,
-  bottom: number,
-  scoop: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(left + scoop, top);
-  ctx.lineTo(right - scoop, top);
-  ctx.arc(right, top, scoop, Math.PI, Math.PI / 2, true);
-  ctx.lineTo(right, bottom - scoop);
-  ctx.arc(right, bottom, scoop, -Math.PI / 2, Math.PI, true);
-  ctx.lineTo(left + scoop, bottom);
-  ctx.arc(left, bottom, scoop, 0, -Math.PI / 2, true);
-  ctx.lineTo(left, top + scoop);
-  ctx.arc(left, top, scoop, Math.PI / 2, 0, true);
-  ctx.closePath();
-  ctx.stroke();
-}
-
-/**
- * Draws an elongated 4-point celestial starburst on Canvas
- */
-function drawStarburstOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  fill = true
-) {
-  const k = Math.min(rx, ry) * 0.22;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - ry);
-  ctx.quadraticCurveTo(cx + k * 0.35, cy - k * 0.35, cx + rx, cy);
-  ctx.quadraticCurveTo(cx + k * 0.35, cy + k * 0.35, cx, cy + ry);
-  ctx.quadraticCurveTo(cx - k * 0.35, cy + k * 0.35, cx - rx, cy);
-  ctx.quadraticCurveTo(cx - k * 0.35, cy - k * 0.35, cx, cy - ry);
-  ctx.closePath();
-  if (fill) ctx.fill();
-  else ctx.stroke();
-}
-
-/**
- * Draws a tiny open diamond ornament on Canvas
- */
-function drawOpenDiamondOnCanvas(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number
-) {
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - ry);
-  ctx.lineTo(cx + rx, cy);
-  ctx.lineTo(cx, cy + ry);
-  ctx.lineTo(cx - rx, cy);
-  ctx.closePath();
-  ctx.stroke();
-}
-
-/**
  * Live 60fps overlay rendered directly on top of the 9:16 camera feed and review card
  */
 export function SelfieFrameOverlay({
@@ -569,165 +392,6 @@ export function SelfieFrameOverlay({
           <span>{meta.dateNumeric}</span>
           <span className="font-semibold">{meta.hashtag || meta.venue}</span>
         </div>
-      </div>
-    );
-  }
-
-  if (frameId === 'minimal-arch') {
-    // True 1080x1920 architectural fine-line SVG overlay with scalloped outer invitation border,
-    // nested cathedral arch, celestial spandrel starbursts, curved <textPath> header, and romantic lockup.
-    const bottomY = isReviewMode ? 1760 : 1635;
-    const outerScallop = buildScallopedRectPath(54, 152, 1026, bottomY, 30);
-    const mainArch = buildCathedralArchPath(540, 636, 452, bottomY - 24, 34);
-    const innerArch = buildCathedralArchPath(540, 636, 432, bottomY - 42, 26);
-    const subLabel = meta.venue
-      ? `${meta.dateLong.toUpperCase()}  •  ${meta.venue.toUpperCase()}`
-      : meta.dateLong.toUpperCase();
-
-    return (
-      <div className="absolute inset-0 pointer-events-none select-none z-10 overflow-hidden">
-        {/* Soft vignette for crisp white fine-line contrast */}
-        <div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-black/45 via-black/15 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-60 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
-
-        <svg
-          viewBox="0 0 1080 1920"
-          preserveAspectRatio="xMidYMid meet"
-          className="absolute inset-0 w-full h-full drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]"
-        >
-          <defs>
-            {/* Circular text path nestled just inside the inner cathedral arch dome */}
-            <path
-              id="fineLineArchHeaderArc"
-              d="M 156,636 A 384,384 0 0,1 924,636"
-              fill="none"
-            />
-          </defs>
-
-          {/* 1. Outer Scalloped French-Invitation Hairline Frame */}
-          <path
-            d={outerScallop}
-            fill="none"
-            stroke="rgba(255,255,255,0.42)"
-            strokeWidth="2.2"
-          />
-
-          {/* 2. Primary Crisp Cathedral Arch */}
-          <path
-            d={mainArch}
-            fill="none"
-            stroke="rgba(255,255,255,0.9)"
-            strokeWidth="3.2"
-          />
-
-          {/* 3. Whisper-Fine Parallel Inner Arch */}
-          <path
-            d={innerArch}
-            fill="none"
-            stroke="rgba(255,255,255,0.42)"
-            strokeWidth="1.6"
-          />
-
-          {/* 4. Upper-Left & Upper-Right Spandrel Celestial Starbursts & Micro-Dots */}
-          <path d={buildStarburstPath(132, 232, 16, 26)} fill="rgba(255,255,255,0.9)" />
-          <circle cx="164" cy="202" r="2.8" fill="rgba(255,255,255,0.75)" />
-          <circle cx="104" cy="268" r="2.5" fill="rgba(255,255,255,0.65)" />
-          <path
-            d="M 96,326 Q 118,282 162,250"
-            fill="none"
-            stroke="rgba(255,255,255,0.45)"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-
-          <path d={buildStarburstPath(948, 232, 16, 26)} fill="rgba(255,255,255,0.9)" />
-          <circle cx="916" cy="202" r="2.8" fill="rgba(255,255,255,0.75)" />
-          <circle cx="976" cy="268" r="2.5" fill="rgba(255,255,255,0.65)" />
-          <path
-            d="M 984,326 Q 962,282 918,250"
-            fill="none"
-            stroke="rgba(255,255,255,0.45)"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-          />
-
-          {/* 5. Crown Keystone Celestial Starburst at Arch Apex */}
-          <path d={buildStarburstPath(540, 224, 13, 21)} fill="#FFFFFF" />
-          <circle cx="510" cy="226" r="2.4" fill="rgba(255,255,255,0.75)" />
-          <circle cx="570" cy="226" r="2.4" fill="rgba(255,255,255,0.75)" />
-
-          {/* 6. Curved Header Tagline Following the Arch Dome */}
-          <text
-            fill="rgba(255,255,255,0.92)"
-            fontSize="24"
-            fontWeight="600"
-            letterSpacing="9"
-            style={{ fontFamily: "'Montserrat', 'Outfit', sans-serif" }}
-          >
-            <textPath href="#fineLineArchHeaderArc" startOffset="50%" textAnchor="middle">
-              {meta.headerTagline}
-            </textPath>
-          </text>
-
-          {/* 7. Delicate Pillar Midpoint Open Diamonds */}
-          <polygon
-            points="108,1040 116,1052 108,1064 100,1052"
-            fill="rgba(10,10,10,0.4)"
-            stroke="rgba(255,255,255,0.75)"
-            strokeWidth="1.8"
-          />
-          <polygon
-            points="972,1040 980,1052 972,1064 964,1052"
-            fill="rgba(10,10,10,0.4)"
-            stroke="rgba(255,255,255,0.75)"
-            strokeWidth="1.8"
-          />
-
-          {/* 8. Bottom Editorial Divider Ornament + Couple Names + Date/Venue */}
-          <line
-            x1="340"
-            y1={bottomY - 216}
-            x2="512"
-            y2={bottomY - 216}
-            stroke="rgba(255,255,255,0.55)"
-            strokeWidth="1.8"
-          />
-          <path d={buildStarburstPath(540, bottomY - 216, 11, 16)} fill="#FFFFFF" />
-          <line
-            x1="568"
-            y1={bottomY - 216}
-            x2="740"
-            y2={bottomY - 216}
-            stroke="rgba(255,255,255,0.55)"
-            strokeWidth="1.8"
-          />
-
-          <text
-            x="540"
-            y={bottomY - 134}
-            textAnchor="middle"
-            fill="#FFFFFF"
-            fontSize="74"
-            fontStyle="italic"
-            fontWeight="600"
-            style={{ fontFamily: "'Cormorant Garamond', 'Playfair Display', Georgia, serif" }}
-          >
-            {meta.fullCoupleName}
-          </text>
-
-          <text
-            x="540"
-            y={bottomY - 78}
-            textAnchor="middle"
-            fill="rgba(255,255,255,0.88)"
-            fontSize="22"
-            fontWeight="500"
-            letterSpacing="5.5"
-            style={{ fontFamily: "'Montserrat', 'Outfit', sans-serif" }}
-          >
-            {subLabel}
-          </text>
-        </svg>
       </div>
     );
   }
@@ -1044,114 +708,6 @@ export async function renderSelfieWithFrameToCanvas(
         ctx.fillText(meta.dateNumeric, 76, H - 125);
         ctx.textAlign = 'right';
         ctx.fillText((meta.hashtag || meta.venue).toUpperCase(), W - 76, H - 125);
-        ctx.restore();
-      } else if (frameId === 'minimal-arch') {
-        drawReadableScrims(0.38, 0.68);
-
-        const bottomY = 1830;
-        const springY = 564;
-
-        ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.6)';
-        ctx.shadowBlur = 8;
-
-        // 1. Outer Scalloped French-Invitation Hairline Frame
-        ctx.strokeStyle = 'rgba(255,255,255,0.44)';
-        ctx.lineWidth = 2.2;
-        strokeScallopedRectOnCanvas(ctx, 54, 80, 1026, bottomY, 30);
-
-        // 2. Primary Crisp Cathedral Arch + Whisper-Fine Inner Arch
-        const strokeCathedralArch = (radius: number, archBot: number, cr: number, alpha: number, lw: number) => {
-          const left = W / 2 - radius;
-          const right = W / 2 + radius;
-          ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-          ctx.lineWidth = lw;
-          ctx.beginPath();
-          ctx.arc(W / 2, springY, radius, Math.PI, 0, false);
-          ctx.lineTo(right, archBot - cr);
-          ctx.quadraticCurveTo(right, archBot, right - cr, archBot);
-          ctx.lineTo(left + cr, archBot);
-          ctx.quadraticCurveTo(left, archBot, left, archBot - cr);
-          ctx.closePath();
-          ctx.stroke();
-        };
-
-        strokeCathedralArch(452, bottomY - 24, 34, 0.9, 3.2);
-        strokeCathedralArch(432, bottomY - 42, 26, 0.42, 1.6);
-
-        // 3. Spandrel Celestial Starbursts & Micro-Dots
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        drawStarburstOnCanvas(ctx, 132, 160, 16, 26, true);
-        drawStarburstOnCanvas(ctx, 948, 160, 16, 26, true);
-
-        ctx.fillStyle = 'rgba(255,255,255,0.75)';
-        const dots: Array<[number, number, number]> = [
-          [164, 130, 2.8],
-          [104, 196, 2.5],
-          [916, 130, 2.8],
-          [976, 196, 2.5],
-          [510, 154, 2.4],
-          [570, 154, 2.4],
-        ];
-        for (const [dx, dy, dr] of dots) {
-          ctx.beginPath();
-          ctx.arc(dx, dy, dr, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.45)';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(96, 254);
-        ctx.quadraticCurveTo(118, 210, 162, 178);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(984, 254);
-        ctx.quadraticCurveTo(962, 210, 918, 178);
-        ctx.stroke();
-
-        // 4. Crown Keystone Celestial Starburst
-        ctx.fillStyle = '#FFFFFF';
-        drawStarburstOnCanvas(ctx, W / 2, 152, 13, 21, true);
-
-        // 5. Curved Header Tagline Following the Arch Dome
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.font = '600 24px "Montserrat", "Outfit", sans-serif';
-        drawCurvedArcTextOnCanvas(ctx, meta.headerTagline, W / 2, springY, 384, 9);
-
-        // 6. Delicate Pillar Midpoint Open Diamonds
-        ctx.strokeStyle = 'rgba(255,255,255,0.78)';
-        ctx.lineWidth = 1.8;
-        drawOpenDiamondOnCanvas(ctx, 108, 1080, 8, 12);
-        drawOpenDiamondOnCanvas(ctx, 972, 1080, 8, 12);
-
-        // 7. Bottom Editorial Divider Ornament + Couple Names + Date/Venue
-        const divY = bottomY - 226;
-        ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(340, divY);
-        ctx.lineTo(512, divY);
-        ctx.moveTo(568, divY);
-        ctx.lineTo(740, divY);
-        ctx.stroke();
-
-        ctx.fillStyle = '#FFFFFF';
-        drawStarburstOnCanvas(ctx, W / 2, divY, 11, 16, true);
-
-        ctx.shadowColor = 'rgba(0,0,0,0.8)';
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.textAlign = 'center';
-        ctx.font = `italic 600 76px ${resolveFontFamily('"Cormorant Garamond", "Playfair Display", Georgia, serif', true)}`;
-        ctx.fillText(meta.fullCoupleName, W / 2, bottomY - 142);
-
-        const subLabel = meta.venue
-          ? `${meta.dateLong.toUpperCase()}   •   ${meta.venue.toUpperCase()}`
-          : meta.dateLong.toUpperCase();
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.font = '500 23px "Montserrat", "Outfit", sans-serif';
-        ctx.fillText(subLabel.split('').join(' '), W / 2, bottomY - 82);
         ctx.restore();
       } else if (frameId === 'botanical-monogram') {
         drawReadableScrims(0.42, 0.65);
