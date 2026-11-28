@@ -72,7 +72,7 @@ export const EVENT_CONFIG = {
     badgeText: '',
 
     // Enable 30-second video recording mode alongside Photo mode
-    allowVideo: true,
+    allowVideo: false,
   },
 
   // 7. Cover Photos (Save new photos in /public/assets/img/ folder)
