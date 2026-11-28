@@ -735,7 +735,7 @@ export default function SelfieCameraModal({
         )}
 
         {/* Live 9:16 Wedding/Engagement Frame Overlay */}
-        <SelfieFrameOverlay frameId={selectedFrame} meta={meta} isReviewMode={false} />
+        <SelfieFrameOverlay frameId={selectedFrame} meta={meta} isReviewMode={isInReview} />
 
         {/* Floating Search / Frame & Filter Explorer Button (Matches Kisandah magnifying glass) */}
         {!isRecordingVideo && (
@@ -784,7 +784,7 @@ export default function SelfieCameraModal({
                         }
                         className={`rounded-full flex flex-col items-center justify-center transition-all duration-200 ${
                           isSelected
-                            ? 'w-[54px] h-[54px] bg-white/10 backdrop-blur-xs text-white'
+                            ? 'w-[54px] h-[54px] bg-white/10 backdrop-blur-sm text-white'
                             : 'w-11 h-11 bg-black/55 hover:bg-black/75 border border-white/30 backdrop-blur-md text-white/85 scale-95 hover:scale-100'
                         }`}
                       >
@@ -896,7 +896,7 @@ export default function SelfieCameraModal({
                       className={`py-1.5 px-2 rounded-xl text-[10px] font-semibold border transition ${
                         active
                           ? 'bg-white text-black border-white'
-                          : 'bg-white/8 text-white/80 border-white/12 hover:bg-white/15'
+                          : 'bg-white/[0.08] text-white/80 border-white/15 hover:bg-white/15'
                       }`}
                     >
                       {flt.shortLabel}
@@ -919,8 +919,8 @@ export default function SelfieCameraModal({
                     }}
                     className={`p-3 rounded-2xl border text-left flex flex-col justify-between min-h-[82px] transition ${
                       active
-                        ? 'bg-white/18 border-white ring-1 ring-white'
-                        : 'bg-white/6 border-white/12 hover:bg-white/12'
+                        ? 'bg-white/20 border-white ring-1 ring-white'
+                        : 'bg-white/[0.06] border-white/15 hover:bg-white/15'
                     }`}
                   >
                     <div className="flex items-center justify-between">
